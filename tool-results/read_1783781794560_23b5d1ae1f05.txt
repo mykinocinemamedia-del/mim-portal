@@ -1,0 +1,515 @@
+     1→     1→import Link from 'next/link'
+     2→     2→import { Button } from '@/components/ui/button'
+     3→     3→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+     4→     4→import { Badge } from '@/components/ui/badge'
+     5→     5→import {
+     6→     6→  Accordion,
+     7→     7→  AccordionContent,
+     8→     8→  AccordionItem,
+     9→     9→  AccordionTrigger,
+    10→    10→} from '@/components/ui/accordion'
+    11→    11→import {
+    12→    12→  Sparkles, Users, Briefcase, ShieldCheck, Heart, Clock,
+    13→    13→  ArrowRight, Phone, Mail, MapPin, MessageCircle, Star,
+    14→    14→  GraduationCap, FileText, Video, Calendar, CheckCircle2,
+    15→    15→  Home, Baby, Accessibility, Bot, Zap, TrendingUp, CreditCard,
+    16→    16→  UserPlus, UserCheck, MonitorPlay, PenTool, Rocket,
+    17→    17→  Search, Filter, Award, Wallet, Users2, Headphones, ChevronRight
+    18→    18→} from 'lucide-react'
+    19→    19→import { waCompanyLink, formatMYR } from '@/lib/utils'
+    20→    20→import Image from 'next/image'
+    21→    21→
+    22→    22→export default function MimLandingPage() {
+    23→    23→  return (
+    24→    24→    <div className="min-h-screen flex flex-col bg-[#0d1f33] text-slate-100">
+    25→    25→      {/* Header */}
+    26→    26→      <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0d1f33]/80 backdrop-blur-md">
+    27→    27→        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+    28→    28→          <div className="flex items-center gap-3">
+    29→    29→            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#00bcd4] to-[#2d5a7c] flex items-center justify-center text-white font-bold shadow-md">
+    30→    30→              <Home className="w-6 h-6" />
+    31→    31→            </div>
+    32→    32→            <div>
+    33→    33→              <h1 className="text-lg font-bold leading-tight text-white">MIM Portal</h1>
+    34→    34→              <p className="text-xs text-slate-400 leading-tight">Maid In Malaysia</p>
+    35→    35→            </div>
+    36→    36→          </div>
+    37→    37→          <nav className="hidden md:flex items-center gap-1">
+    38→    38→            <Link href="#how-it-works" className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-[#00bcd4] transition">Cara Kerja</Link>
+    39→    39→            <Link href="#benefits" className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-[#00bcd4] transition">Kelebihan</Link>
+    40→    40→            <Link href="#services" className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-[#00bcd4] transition">Perkhidmatan</Link>
+    41→    41→            <Link href="/pricing" className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-[#00bcd4] transition">Harga</Link>
+    42→    42→            <Link href="#ai-agents" className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-[#00bcd4] transition">AI Agents</Link>
+    43→    43→            <Link href="#faq" className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-[#00bcd4] transition">FAQ</Link>
+    44→    44→            <Link href="/for-maids" className="px-3 py-2 text-sm font-medium text-[#00bcd4] hover:text-[#00d4e8] transition">Untuk Pembantu →</Link>
+    45→    45→          </nav>
+    46→    46→          <div className="flex items-center gap-2">
+    47→    47→            <Link href="/admin/login">
+    48→    48→              <Button variant="ghost" size="sm" className="hidden sm:flex text-slate-300 hover:text-white hover:bg-white/5">Admin</Button>
+    49→    49→            </Link>
+    50→    50→            <Link href="/employer/login">
+    51→    51→              <Button size="sm" className="btn-rounded bg-[#00bcd4] hover:bg-[#00a5bb] text-white">Log Masuk</Button>
+    52→    52→            </Link>
+    53→    53→          </div>
+    54→    54→        </div>
+    55→    55→      </header>
+    56→    56→
+    57→    57→      {/* Hero Section - Focus on Employer */}
+    58→    58→      <section className="relative overflow-hidden wave-bg">
+    59→    59→        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#00bcd4]/10 rounded-full blur-3xl" />
+    60→    60→        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#2d5a7c]/20 rounded-full blur-3xl" />
+    61→    61→        <div className="absolute top-20 right-20 w-32 h-32 dot-pattern opacity-30" />
+    62→    62→        
+    63→    63→        <div className="container mx-auto px-4 py-16 md:py-24 relative">
+    64→    64→          <div className="grid lg:grid-cols-2 gap-12 items-center">
+    65→    65→            <div className="space-y-6">
+    66→    66→              <Badge variant="secondary" className="bg-[#00bcd4]/15 text-[#00bcd4] hover:bg-[#00bcd4]/20 border border-[#00bcd4]/20">
+    67→    67→                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+    68→    68→                Platform Pembantu Rumah Malaysia #1
+    69→    69→              </Badge>
+    70→    70→              <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-tight text-white">
+    71→    71→                Cari <span className="gradient-text font-semibold">Pembantu Rumah Profesional</span> Untuk Keluarga Anda
+    72→    72→              </h2>
+    73→    73→              <p className="text-lg text-slate-300 leading-relaxed">
+    74→    74→                MIM Portal menghubungkan majikan dengan pembantu rumah, pengasuh, dan penjaga orang tua yang telatih dan dipercayai. Semua proses - dari pencarian, temuduga, kontrak, hingga pembayaran - diuruskan dalam satu platform.
+    75→    75→              </p>
+    76→    76→              <div className="flex flex-col sm:flex-row gap-3">
+    77→    77→                <Link href="/employer/register">
+    78→    78→                  <Button size="lg" className="btn-rounded w-full sm:w-auto text-base h-12 px-8 bg-[#00bcd4] hover:bg-[#00a5bb] text-white border-0">
+    79→    79→                    Cari Pembantu Sekarang
+    80→    80→                    <ArrowRight className="w-4 h-4 ml-2" />
+    81→    81→                  </Button>
+    82→    82→                </Link>
+    83→    83→                <a href={waCompanyLink('Hai, saya ingin tahu lebih lanjut tentang perkhidmatan MIM Portal.')} target="_blank" rel="noopener noreferrer">
+    84→    84→                  <Button size="lg" variant="outline" className="btn-rounded w-full sm:w-auto text-base h-12 px-8 bg-transparent border-2 border-[#00bcd4]/40 text-[#00bcd4] hover:bg-[#00bcd4]/10 hover:text-white">
+    85→    85→                    <MessageCircle className="w-4 h-4 mr-2" /> Tanya WhatsApp
+    86→    86→                  </Button>
+    87→    87→                </a>
+    88→    88→              </div>
+    89→    89→              <div className="flex items-center gap-6 pt-4">
+    90→    90→                <div>
+    91→    91→                  <div className="text-2xl font-bold text-[#00bcd4]">500+</div>
+    92→    92→                  <div className="text-sm text-slate-400">Pembantu Berdaftar</div>
+    93→    93→                </div>
+    94→    94→                <div className="h-10 w-px bg-white/10" />
+    95→    95→                <div>
+    96→    96→                  <div className="text-2xl font-bold text-[#00bcd4]">98%</div>
+    97→    97→                  <div className="text-sm text-slate-400">Kepuasan Majikan</div>
+    98→    98→                </div>
+    99→    99→                <div className="h-10 w-px bg-white/10" />
+   100→   100→                <div>
+   101→   101→                  <div className="flex items-center gap-1">
+   102→   102→                    <span className="text-2xl font-bold text-[#00bcd4]">4.9</span>
+   103→   103→                    <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+   104→   104→                  </div>
+   105→   105→                  <div className="text-sm text-slate-400">Penarafan Purata</div>
+   106→   106→                </div>
+   107→   107→              </div>
+   108→   108→            </div>
+   109→   109→            
+   110→   110→            <div className="relative">
+   111→   111→              <div className="absolute inset-0 bg-gradient-to-br from-[#00bcd4]/20 to-[#2d5a7c]/20 rounded-3xl blur-2xl" />
+   112→   112→              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 glass">
+   113→   113→                <Image
+   114→   114→                  src="/images/hero/hero-blue.png"
+   115→   115→                  alt="MIM Portal - Maid In Malaysia"
+   116→   116→                  width={1344}
+   117→   117→                  height={768}
+   118→   118→                  className="w-full h-auto"
+   119→   119→                  priority
+   120→   120→                />
+   121→   121→              </div>
+   122→   122→              <Card className="absolute -bottom-6 -left-6 hidden md:block border-0 shadow-2xl glass-dark">
+   123→   123→                <CardContent className="p-4 w-72">
+   124→   124→                  <div className="flex items-center gap-2 mb-3">
+   125→   125→                    <Badge variant="outline" className="bg-[#00bcd4]/15 text-[#00bcd4] border-[#00bcd4]/30">Mula Sekarang</Badge>
+   126→   126→                  </div>
+   127→   127→                  <div className="space-y-2">
+   128→   128→                    <Link href="/employer/register" className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition group">
+   129→   129→                      <div className="w-9 h-9 rounded-lg bg-[#00bcd4]/15 text-[#00bcd4] flex items-center justify-center">
+   130→   130→                        <Briefcase className="w-4 h-4" />
+   131→   131→                      </div>
+   132→   132→                      <div className="flex-1">
+   133→   133→                        <div className="text-sm font-semibold text-white">Saya Majikan</div>
+   134→   134→                        <div className="text-xs text-slate-400">Cari pembantu</div>
+   135→   135→                      </div>
+   136→   136→                      <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-[#00bcd4]" />
+   137→   137→                    </Link>
+   138→   138→                    <Link href="/for-maids" className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition group">
+   139→   139→                      <div className="w-9 h-9 rounded-lg bg-[#00bcd4]/15 text-[#00bcd4] flex items-center justify-center">
+   140→   140→                        <Users className="w-4 h-4" />
+   141→   141→                      </div>
+   142→   142→                      <div className="flex-1">
+   143→   143→                        <div className="text-sm font-semibold text-white">Saya Pembantu</div>
+   144→   144→                        <div className="text-xs text-slate-400">Cari kerja</div>
+   145→   145→                      </div>
+   146→   146→                      <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-[#00bcd4]" />
+   147→   147→                    </Link>
+   148→   148→                  </div>
+   149→   149→                </CardContent>
+   150→   150→              </Card>
+   151→   151→            </div>
+   152→   152→          </div>
+   153→   153→        </div>
+   154→   154→      </section>
+   155→   155→
+   156→   156→      {/* Benefits Section - For Employers */}
+   157→   157→      <section id="benefits" className="py-20 bg-gradient-to-b from-[#0d1f33] to-[#102943] relative overflow-hidden">
+   158→   158→        <div className="absolute top-40 left-10 w-64 h-64 bg-[#00bcd4]/5 rounded-full blur-3xl" />
+   159→   159→        
+   160→   160→        <div className="container mx-auto px-4 relative">
+   161→   161→          <div className="text-center mb-16">
+   162→   162→            <Badge variant="secondary" className="mb-3 bg-[#00bcd4]/15 text-[#00bcd4] border-[#00bcd4]/20">Kelebihan Untuk Majikan</Badge>
+   163→   163→            <h2 className="text-3xl md:text-5xl font-light text-white mb-3">Mengapa Majikan <span className="gradient-text font-semibold">Pilih MIM Portal?</span></h2>
+   164→   164→            <p className="text-slate-400 max-w-2xl mx-auto text-lg">
+   165→   165→              Kami faham mencari pembantu rumah yang dipercayai bukan mudah. MIM Portal selesaikan semua masalah anda.
+   166→   166→            </p>
+   167→   167→          </div>
+   168→   168→          
+   169→   169→          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+   170→   170→            {[
+   171→   171→              { icon: ShieldCheck, title: 'Selamat & Terjamin', desc: 'Semua pembantu melalui proses saringan, latihan, dan penilaian. Kontrak sah undang-undang melindungi kedua-dua pihak.' },
+   172→   172→              { icon: Search, title: 'Cari & Pilih Sendiri', desc: 'Tapis pembantu mengikut jenis perkhidmatan, kawasan, agama, dan pilihan live-in/back & forth. Anda pilih yang terbaik.' },
+   173→   173→              { icon: Clock, title: 'Jimat Masa', desc: 'Semua proses diuruskan automatik - dari pendaftaran, temuduga, kontrak, hingga pembayaran. Tak perlu urus kertas kerja.' },
+   174→   174→              { icon: Headphones, title: 'Sokongan 24/7', desc: 'AI assistant Aida sentiasa membantu. Admin kami sedia membantu sebarang masalah melalui WhatsApp bila-bila masa.' },
+   175→   175→              { icon: Award, title: 'Pembantu Telatih', desc: 'Setiap pembantu melalui modul latihan video wajib sebelum boleh dipilih. Kemahiran dipantau dan dinilai.' },
+   176→   176→              { icon: FileText, title: 'Kontrak Automatik', desc: '3 jenis kontrak dijana automatik - Agensi-Pembantu, Agensi-Majikan, Majikan-Pembantu. Sah dan terjamin.' },
+   177→   177→              { icon: CreditCard, title: 'Pembayaran Teratur', desc: 'Sistem auto-invois bulanan, peringatan pembayaran, dan rekod pembayaran lengkap. Tak perlu risau lupa bayar.' },
+   178→   178→              { icon: Bot, title: 'AI Matchmaker', desc: 'AI kami score keserasian antara anda dan pembantu (0-100) berdasarkan keperluan, kawasan, dan budget anda.' },
+   179→   179→            ].map((b, i) => (
+   180→   180→              <Card key={i} className="border border-white/10 glass-dark hover:border-[#00bcd4]/30 transition-all duration-300">
+   181→   181→                <CardContent className="p-5">
+   182→   182→                  <div className="w-12 h-12 rounded-xl bg-[#00bcd4]/15 text-[#00bcd4] flex items-center justify-center mb-3">
+   183→   183→                    <b.icon className="w-6 h-6" />
+   184→   184→                  </div>
+   185→   185→                  <h3 className="font-semibold text-white mb-2">{b.title}</h3>
+   186→   186→                  <p className="text-sm text-slate-400">{b.desc}</p>
+   187→   187→                </CardContent>
+   188→   188→              </Card>
+   189→   189→            ))}
+   190→   190→          </div>
+   191→   191→        </div>
+   192→   192→      </section>
+   193→   193→
+   194→   194→      {/* How It Works - For Employers */}
+   195→   195→      <section id="how-it-works" className="py-20 bg-[#102943] relative overflow-hidden">
+   196→   196→        <div className="absolute bottom-40 right-10 w-64 h-64 bg-[#2d5a7c]/10 rounded-full blur-3xl" />
+   197→   197→        
+   198→   198→        <div className="container mx-auto px-4 relative">
+   199→   199→          <div className="text-center mb-16">
+   200→   200→            <Badge variant="secondary" className="mb-3 bg-[#00bcd4]/15 text-[#00bcd4] border-[#00bcd4]/20">Proses Mudah</Badge>
+   201→   201→            <h2 className="text-3xl md:text-5xl font-light text-white mb-3">Bagaimana <span className="gradient-text font-semibold">Mendapatkan Pembantu</span></h2>
+   202→   202→            <p className="text-slate-400 max-w-2xl mx-auto text-lg">
+   203→   203→              6 langkah mudah dari pendaftaran sehingga pembantu mula bekerja di rumah anda.
+   204→   204→            </p>
+   205→   205→          </div>
+   206→   206→          
+   207→   207→          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+   208→   208→            {[
+   209→   209→              { num: '01', icon: UserPlus, title: 'Daftar Sebagai Majikan', desc: 'Isi borang online dengan keperluan anda - jenis perkhidmatan, bilangan anak, budget, kawasan.' },
+   210→   210→              { num: '02', icon: Search, title: 'Cari & Pilih Pembantu', desc: 'Tapis pembantu mengikut kriteria. Lihat profil, rating, kemahiran. Pilih yang sesuai.' },
+   211→   211→              { num: '03', icon: Calendar, title: 'Temuduga Online', desc: 'Sesi Google Meet 3 pihak - anda, pembantu, dan admin MIM. Kenali pembantu sebelum komitmen.' },
+   212→   212→              { num: '04', icon: PenTool, title: 'Tandatangan Kontrak', desc: '3 jenis kontrak ditandatangani secara digital. Sah undang-undang, terjamin kedua-dua pihak.' },
+   213→   213→              { num: '05', icon: Rocket, title: 'Pembantu Mula Kerja', desc: 'Pembantu mula bekerja mengikut jadual yang dipersetujui. Schedule auto dijana.' },
+   214→   214→              { num: '06', icon: Headphones, title: 'Sokongan Berterusan', desc: 'AI monitor kualiti, auto-invois pembayaran, dan admin sedia membantu sepanjang tempoh kontrak.' },
+   215→   215→            ].map((step, i) => (
+   216→   216→              <Card key={i} className="numbered-card group border border-white/10 glass-dark hover:border-[#00bcd4]/30 transition-all duration-300" data-number={step.num}>
+   217→   217→                <CardContent className="p-5">
+   218→   218→                  <div className="flex items-start gap-3 mb-3">
+   219→   219→                    <div className="w-10 h-10 rounded-xl bg-[#00bcd4] flex items-center justify-center text-white shadow-lg shrink-0">
+   220→   220→                      <step.icon className="w-5 h-5" />
+   221→   221→                    </div>
+   222→   222→                    <div className="flex-1">
+   223→   223→                      <div className="flex items-center gap-2">
+   224→   224→                        <span className="text-2xl font-bold text-[#00bcd4]/40">{step.num}</span>
+   225→   225→                        <h3 className="font-semibold text-white">{step.title}</h3>
+   226→   226→                      </div>
+   227→   227→                    </div>
+   228→   228→                  </div>
+   229→   229→                  <p className="text-sm text-slate-400">{step.desc}</p>
+   230→   230→                </CardContent>
+   231→   231→              </Card>
+   232→   232→            ))}
+   233→   233→          </div>
+   234→   234→          
+   235→   235→          <div className="mt-12 text-center">
+   236→   236→            <Link href="/employer/register">
+   237→   237→              <Button size="lg" className="btn-rounded bg-[#00bcd4] hover:bg-[#00a5bb] text-white border-0 px-8">
+   238→   238→                Mula Cari Pembantu <ArrowRight className="w-4 h-4 ml-2" />
+   239→   239→              </Button>
+   240→   240→            </Link>
+   241→   241→          </div>
+   242→   242→        </div>
+   243→   243→      </section>
+   244→   244→
+   245→   245→      {/* Services Section */}
+   246→   246→      <section id="services" className="py-20 bg-[#102943] relative overflow-hidden">
+   247→   247→        <div className="absolute top-0 right-0 w-96 h-96 bg-[#00bcd4]/5 rounded-full blur-3xl" />
+   248→   248→        
+   249→   249→        <div className="container mx-auto px-4 relative">
+   250→   250→          <div className="text-center mb-12">
+   251→   251→            <Badge variant="secondary" className="mb-3 bg-[#00bcd4]/15 text-[#00bcd4] border-[#00bcd4]/20">Perkhidmatan Kami</Badge>
+   252→   252→            <h2 className="text-3xl md:text-5xl font-light text-white mb-3">3 Jenis <span className="gradient-text font-semibold">Perkhidmatan</span></h2>
+   253→   253→            <p className="text-slate-400 max-w-2xl mx-auto">
+   254→   254→              Pilih perkhidmatan yang sesuai untuk keperluan keluarga anda.
+   255→   255→            </p>
+   256→   256→          </div>
+   257→   257→          <div className="grid md:grid-cols-3 gap-8">
+   258→   258→            <Card className="group border border-white/10 glass-dark hover:border-[#00bcd4]/30 transition-all duration-300 overflow-hidden">
+   259→   259→              <div className="relative h-56 overflow-hidden">
+   260→   260→                <Image src="/images/services/maid.png" alt="Pembantu Rumah" width={1024} height={1024} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+   261→   261→                <div className="absolute inset-0 bg-gradient-to-t from-[#102943] via-transparent to-transparent" />
+   262→   262→              </div>
+   263→   263→              <CardHeader>
+   264→   264→                <CardTitle className="text-xl text-white">Pembantu Rumah</CardTitle>
+   265→   265→                <p className="text-2xl font-bold text-[#00bcd4]">RM1,500 - RM2,500</p>
+   266→   266→                <p className="text-xs text-slate-500">Sebulan</p>
+   267→   267→              </CardHeader>
+   268→   268→              <CardContent>
+   269→   269→                <ul className="space-y-2 text-sm text-slate-300">
+   270→   270→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Pembersihan rumah</li>
+   271→   271→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Memasak</li>
+   272→   272→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Mencuci & menggosok baju</li>
+   273→   273→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Pilihan Live-in atau Back & Forth</li>
+   274→   274→                </ul>
+   275→   275→              </CardContent>
+   276→   276→            </Card>
+   277→   277→            <Card className="group border border-white/10 glass-dark hover:border-[#00bcd4]/30 transition-all duration-300 overflow-hidden">
+   278→   278→              <div className="relative h-56 overflow-hidden">
+   279→   279→                <Image src="/images/services/babysitter.png" alt="Pengasuh" width={1024} height={1024} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+   280→   280→                <div className="absolute inset-0 bg-gradient-to-t from-[#102943] via-transparent to-transparent" />
+   281→   281→              </div>
+   282→   282→              <CardHeader>
+   283→   283→                <CardTitle className="text-xl text-white">Pengasuh</CardTitle>
+   284→   284→                <p className="text-2xl font-bold text-[#00bcd4]">RM1,500 - RM2,500</p>
+   285→   285→                <p className="text-xs text-slate-500">Sebulan</p>
+   286→   286→              </CardHeader>
+   287→   287→              <CardContent>
+   288→   288→                <ul className="space-y-2 text-sm text-slate-300">
+   289→   289→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Penjagaan bayi (0-6 tahun)</li>
+   290→   290→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Penjagaan kanak-kanak (12-17 tahun)</li>
+   291→   291→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Mendidik anak-anak</li>
+   292→   292→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Aktiviti pembelajaran</li>
+   293→   293→                </ul>
+   294→   294→              </CardContent>
+   295→   295→            </Card>
+   296→   296→            <Card className="group border border-white/10 glass-dark hover:border-[#00bcd4]/30 transition-all duration-300 overflow-hidden">
+   297→   297→              <div className="relative h-56 overflow-hidden">
+   298→   298→                <Image src="/images/services/caregiver.png" alt="Penjaga Orang Tua" width={1024} height={1024} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+   299→   299→                <div className="absolute inset-0 bg-gradient-to-t from-[#102943] via-transparent to-transparent" />
+   300→   300→              </div>
+   301→   301→              <CardHeader>
+   302→   302→                <CardTitle className="text-xl text-white">Penjaga Orang Tua</CardTitle>
+   303→   303→                <p className="text-2xl font-bold text-[#00bcd4]">RM1,700 - RM3,500</p>
+   304→   304→                <p className="text-xs text-slate-500">Sebulan</p>
+   305→   305→              </CardHeader>
+   306→   306→              <CardContent>
+   307→   307→                <ul className="space-y-2 text-sm text-slate-300">
+   308→   308→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Penjagaan warga emas</li>
+   309→   309→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Bantuan aktiviti harian</li>
+   310→   310→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Sokongan emosi</li>
+   311→   311→                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-[#00bcd4] mt-0.5 shrink-0" />Mengingatkan ubat</li>
+   312→   312→                </ul>
+   313→   313→              </CardContent>
+   314→   314→            </Card>
+   315→   315→          </div>
+   316→   316→        </div>
+   317→   317→      </section>
+   318→   318→
+   319→   319→      {/* AI Agents Section */}
+   320→   320→      <section id="ai-agents" className="py-20 bg-gradient-to-br from-[#0a1828] via-[#0d1f33] to-[#102943] text-white relative overflow-hidden">
+   321→   321→        <div className="absolute top-0 right-0 w-96 h-96 bg-[#00bcd4]/15 rounded-full blur-3xl" />
+   322→   322→        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#2d5a7c]/20 rounded-full blur-3xl" />
+   323→   323→        
+   324→   324→        <div className="container mx-auto px-4 relative">
+   325→   325→          <div className="grid lg:grid-cols-2 gap-12 items-center">
+   326→   326→            <div className="space-y-6">
+   327→   327→              <Badge variant="secondary" className="bg-[#00bcd4]/15 text-[#00bcd4] border-[#00bcd4]/20">
+   328→   328→                <Bot className="w-3.5 h-3.5 mr-1.5" />Fully Agentic AI Platform
+   329→   329→              </Badge>
+   330→   330→              <h2 className="text-3xl md:text-5xl font-light text-white">
+   331→   331→                13 AI Agents <span className="gradient-text font-semibold">Automate Semua</span>
+   332→   332→              </h2>
+   333→   333→              <p className="text-slate-300 leading-relaxed">
+   334→   334→                MIM Portal bukan sekadar platform - ia ekosistem AI yang automate keseluruhan proses. Dari carian pembantu sehingga pengurusan kontrak dan pembayaran, semua diuruskan oleh AI agents secara autonomi.
+   335→   335→              </p>
+   336→   336→              <div className="grid grid-cols-2 gap-3">
+   337→   337→                {[
+   338→   338→                  { icon: Zap, title: 'Lead Generation', desc: '4 agents cari leads' },
+   339→   339→                  { icon: Heart, title: 'AI Matchmaker', desc: 'Auto-score keserasian' },
+   340→   340→                  { icon: MessageCircle, title: 'WhatsApp Onboarding', desc: 'Aida AI assistant' },
+   341→   341→                  { icon: FileText, title: 'Auto-Contract', desc: '3 kontrak auto-jana' },
+   342→   342→                  { icon: CreditCard, title: 'Payment Agent', desc: 'Auto-invoice & reminder' },
+   343→   343→                  { icon: Calendar, title: 'Schedule Agent', desc: 'Auto jadual kerja' },
+   344→   344→                  { icon: Bot, title: '24/7 Support AI', desc: 'Handle semua chat' },
+   345→   345→                  { icon: TrendingUp, title: 'Quality Monitor', desc: 'Feedback & churn prediction' },
+   346→   346→                ].map((agent, i) => (
+   347→   347→                  <div key={i} className="flex items-start gap-2 p-3 rounded-lg glass-dark hover:bg-white/5 transition">
+   348→   348→                    <agent.icon className="w-4 h-4 mt-0.5 text-[#00bcd4] shrink-0" />
+   349→   349→                    <div>
+   350→   350→                      <h4 className="font-semibold text-sm text-white">{agent.title}</h4>
+   351→   351→                      <p className="text-xs text-slate-400">{agent.desc}</p>
+   352→   352→                    </div>
+   353→   353→                  </div>
+   354→   354→                ))}
+   355→   355→              </div>
+   356→   356→              <Link href="/admin/agents">
+   357→   357→                <Button size="lg" className="btn-rounded mt-4 bg-[#00bcd4] hover:bg-[#00a5bb] text-white border-0">
+   358→   358→                  <Bot className="w-4 h-4 mr-2" /> Lihat AI Agents Dashboard <ArrowRight className="w-4 h-4 ml-2" />
+   359→   359→                </Button>
+   360→   360→              </Link>
+   361→   361→            </div>
+   362→   362→            <div className="relative">
+   363→   363→              <div className="absolute inset-0 bg-gradient-to-br from-[#00bcd4]/20 to-[#2d5a7c]/20 rounded-3xl blur-2xl" />
+   364→   364→              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+   365→   365→                <Image src="/images/about/ai-agents-blue.png" alt="AI Agents" width={1344} height={768} className="w-full h-auto" />
+   366→   366→              </div>
+   367→   367→            </div>
+   368→   368→          </div>
+   369→   369→        </div>
+   370→   370→      </section>
+   371→   371→
+   372→   372→      {/* FAQ Section - Detailed for Employers */}
+   373→   373→      <section id="faq" className="py-20 bg-[#102943]">
+   374→   374→        <div className="container mx-auto px-4 max-w-4xl">
+   375→   375→          <div className="text-center mb-12">
+   376→   376→            <Badge variant="secondary" className="mb-3 bg-[#00bcd4]/15 text-[#00bcd4] border-[#00bcd4]/20">Soalan Lazim Majikan</Badge>
+   377→   377→            <h2 className="text-3xl md:text-5xl font-light text-white mb-3">Soalan <span className="gradient-text font-semibold">Lazim</span></h2>
+   378→   378→            <p className="text-slate-400">Jawapan untuk soalan yang kerap ditanya oleh majikan.</p>
+   379→   379→          </div>
+   380→   380→          
+   381→   381→          <Accordion type="single" collapsible className="space-y-3">
+   382→   382→            {[
+   383→   383→              { q: 'Berapakah gaji pembantu rumah?', a: 'Gaji pembantu rumah bergantung kepada jenis perkhidmatan:\n\n• Pembantu Rumah (Maid): RM1,500 - RM2,500 sebulan\n• Pengasuh (Babysitter): RM1,500 - RM2,500 sebulan\n• Penjaga Orang Tua (Caregiver): RM1,700 - RM3,500 sebulan\n\nGaji ditentukan oleh pengalaman, kemahiran, dan jenis perkhidmatan. Majikan boleh tawar gaji dalam julat ini semasa proses booking.' },
+   384→   384→              { q: 'Bagaimana proses mendapatkan pembantu?', a: 'Prosesnya mudah - 6 langkah:\n\n1. Daftar sebagai majikan (borang online)\n2. Cari & pilih pembantu (tapis mengikut kriteria)\n3. Temuduga online (Google Meet 3 pihak)\n4. Tandatangan kontrak (3 jenis kontrak digital)\n5. Pembantu mula bekerja (ikut jadual)\n6. Sokongan berterusan (AI + admin)\n\nKeseluruhan proses biasanya mengambil masa 3-7 hari dari pendaftaran sehingga pembantu mula bekerja.' },
+   385→   385→              { q: 'Adakah pembantu telah disaring dan telatih?', a: 'Ya, semua pembantu melalui proses berikut sebelum tersenarai di platform:\n\n• Pendaftaran dengan maklumat lengkap (IC, keluarga, alamat)\n• Borang A (10 soalan penilaian - kebenaran keluarga, kebolehan, motivasi)\n• Modul latihan video wajib (6 kursus asas)\n• Penilaian rating oleh sistem\n• Saringan admin sebelum status "active"\n\nPembantu dengan rating rendah atau yang tidak lengkap profil akan ditandai untuk semakan.' },
+   386→   386→              { q: 'Apakah jenis kontrak yang ditandatangani?', a: 'Terdapat 3 jenis kontrak yang ditandatangani secara digital:\n\n1. Kontrak Agensi-Pembantu: Antara MIM Portal (Kino Studios) dan pembantu\n2. Kontrak Agensi-Majikan: Antara MIM Portal dan majikan\n3. Kontrak Majikan-Pembantu: Antara majikan dan pembantu\n\nSemua kontrak dijana secara automatik selepas padanan disahkan, mengandungi terma & syarat lengkap, dan sah di sisi undang-undang Malaysia.' },
+   387→   387→              { q: 'Bagaimana jika pembantu tidak sesuai?', a: 'Jika pembantu tidak sesuai selepas mula bekerja:\n\n• Minggu 1: Hubungi admin melalui WhatsApp untuk feedback\n• Quality Monitor Agent kami akan hubungi anda untuk survey kepuasan\n• Jika masalah serius, admin akan uruskan penggantian pembantu\n• Kontrak boleh ditamatkan dengan notis 7 hari\n\nKami komited untuk memastikan majikan mendapat pembantu yang sesuai. Sokongan kami berterusan sepanjang tempoh kontrak.' },
+   388→   388→              { q: 'Bagaimana pembayaran gaji pembantu?', a: 'Sistem pembayaran MIM Portal:\n\n• Gaji dibayar bulanan oleh majikan kepada pembantu\n• Auto-invois dijana setiap bulan oleh Payment Agent\n• Peringatan dihantar 3 hari sebelum tarikh akhir\n• Status pembayaran: pending → paid → overdue\n• Majikan boleh bayar melalui WhatsApp ke admin atau direct ke pembantu\n\nRekod pembayaran lengkap tersimpan di dashboard majikan untuk rujukan.' },
+   389→   389→              { q: 'Apakah pilihan Live-in atau Back & Forth?', a: 'Pembantu boleh memilih dua pilihan waktu kerja:\n\n• Live-in (Duduk Bersama): Pembantu tinggal di rumah majikan. Cuti Ahad & Cuti Umum. Sesuai untuk keluarga yang perlu pembantu 24/7.\n\n• Back & Forth (Balik Hari): Pembantu datang bekerja 8:00am - 7:00pm, balik rumah sendiri petang. Cuti Ahad & Cuti Umum. Sesuai untuk keluarga yang perlu bantuan waktu siang sahaja.\n\n• Boleh Kedua-duanya: Pembantu fleksibel, boleh pilih ikut tawaran majikan.\n\nMajikan boleh tapis pembantu mengikut pilihan ini semasa carian.' },
+   390→   390→              { q: 'Bagaimana jika berlaku konflik dengan pembantu?', a: 'MIM Portal menyediakan sokongan untuk menyelesaikan konflik:\n\n• 24/7 Support AI (Aida) sentiasa sedia mendengar dan membantu\n• Admin MIM akan mediasi jika perlu (melalui WhatsApp/Google Meet)\n• Untuk isu serius (keselamatan, penyalahgunaan), hubungi admin segera di 017-663 5990\n• Kontrak mengandungi klausa penyelesaian pertikaian\n• Dalam kes kecemasan, hubungi polis 999 dahulu, kemudian admin MIM\n\nKeselamatan dan kesejahteraan kedua-dua pihak adalah keutamaan kami.' },
+   391→   391→              { q: 'Berapakah yuran agensi MIM Portal?', a: 'Yuran agensi bergantung kepada pakej perkhidmatan. Sila hubungi admin kami melalui WhatsApp di +6017-663 5990 untuk:\n\n• Butiran yuran agensi\n• Pakej perkhidmatan tersuai\n• Promosi semasa\n\nYuran agensi adalah sekali sahaja (one-time) dan berbeza dari gaji bulanan pembantu. Gaji pembantu dibayar terus kepada pembantu.' },
+   392→   392→              { q: 'Adakah pembantu ada rekod perubatan?', a: 'Ya, admin MIM menguruskan rekod perubatan pembantu:\n\n• Rekod kesihatan umum\n• Rekod vaksinasi\n• Dikemaskini secara berkala\n\nRekod perubatan boleh diminta oleh majikan melalui dashboard. Untuk isu kesihatan semasa bekerja, admin akan koordinasi dengan pembantu untuk pemeriksaan perubatan.' },
+   393→   393→              { q: 'Bolehkah saya menukar pembantu selepas kontrak bermula?', a: 'Ya, anda boleh memohon pertukaran pembantu jika:\n\n• Pembantu tidak sesuai (selepas tempoh percubaan 1 bulan)\n• Konflik yang tidak boleh diselesaikan\n• Keperluan keluarga berubah\n\nProses pertukaran:\n1. Hubungi admin melalui WhatsApp\n2. Admin akan semak situasi dan cadangkan pembantu gantian\n3. Kontrak baru dijana\n4. Pembantu lama dan baru akan diselaraskan\n\nYuran pertukaran mungkin dikenakan bergantung kepada situasi.' },
+   394→   394→            ].map((faq, i) => (
+   395→   395→              <AccordionItem key={i} value={`item-${i}`} className="border border-white/10 glass-dark rounded-xl overflow-hidden">
+   396→   396→                <AccordionTrigger className="px-5 py-4 text-white hover:no-underline hover:bg-white/5 transition text-left">
+   397→   397→                  <span className="font-medium text-base">{faq.q}</span>
+   398→   398→                </AccordionTrigger>
+   399→   399→                <AccordionContent className="px-5 pb-4 text-slate-300 whitespace-pre-line text-sm leading-relaxed">
+   400→   400→                  {faq.a}
+   401→   401→                </AccordionContent>
+   402→   402→              </AccordionItem>
+   403→   403→            ))}
+   404→   404→          </Accordion>
+   405→   405→          
+   406→   406→          <div className="mt-12 text-center">
+   407→   407→            <p className="text-slate-400 mb-4">Masih ada soalan? Hubungi kami:</p>
+   408→   408→            <a href={waCompanyLink('Hai, saya ada soalan tentang MIM Portal.')} target="_blank" rel="noopener noreferrer">
+   409→   409→              <Button size="lg" className="btn-rounded bg-[#00bcd4] hover:bg-[#00a5bb] text-white border-0 px-8">
+   410→   410→                <MessageCircle className="w-4 h-4 mr-2" /> Tanya WhatsApp
+   411→   411→              </Button>
+   412→   412→            </a>
+   413→   413→          </div>
+   414→   414→        </div>
+   415→   415→      </section>
+   416→   416→
+   417→   417→      {/* CTA Section */}
+   418→   418→      <section className="py-20 relative overflow-hidden bg-gradient-to-br from-[#0a1828] to-[#0d1f33]">
+   419→   419→        <div className="absolute inset-0 opacity-20" style={{
+   420→   420→          backgroundImage: 'url(/images/patterns/cta-bg.png)',
+   421→   421→          backgroundSize: 'cover',
+   422→   422→          backgroundPosition: 'center',
+   423→   423→        }} />
+   424→   424→        <div className="absolute inset-0 bg-gradient-to-br from-[#00bcd4]/10 to-[#2d5a7c]/20" />
+   425→   425→        
+   426→   426→        <div className="container mx-auto px-4 relative">
+   427→   427→          <Card className="border border-white/10 glass-dark text-white shadow-2xl max-w-4xl mx-auto">
+   428→   428→            <CardContent className="p-10 md:p-14 text-center">
+   429→   429→              <h2 className="text-3xl md:text-5xl font-light mb-4">Bersedia <span className="gradient-text font-semibold">Mendapatkan Pembantu?</span></h2>
+   430→   430→              <p className="text-slate-300 max-w-2xl mx-auto mb-8 text-lg">
+   431→   431→                Daftar sekarang dan biar AI kami carikan pembantu yang sesuai untuk keluarga anda.
+   432→   432→              </p>
+   433→   433→              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+   434→   434→                <Link href="/employer/register">
+   435→   435→                  <Button size="lg" className="btn-rounded w-full sm:w-auto h-12 px-8 text-base bg-[#00bcd4] hover:bg-[#00a5bb] text-white border-0">
+   436→   436→                    Daftar Sebagai Majikan
+   437→   437→                  </Button>
+   438→   438→                </Link>
+   439→   439→                <Link href="/for-maids">
+   440→   440→                  <Button size="lg" variant="outline" className="btn-rounded w-full sm:w-auto h-12 px-8 text-base bg-transparent border-2 border-[#00bcd4]/40 text-[#00bcd4] hover:bg-[#00bcd4]/10 hover:text-white">
+   441→   441→                    Saya Pembantu / Pengasuh
+   442→   442→                  </Button>
+   443→   443→                </Link>
+   444→   444→              </div>
+   445→   445→            </CardContent>
+   446→   446→          </Card>
+   447→   447→        </div>
+   448→   448→      </section>
+   449→   449→
+   450→   450→      {/* Footer */}
+   451→   451→      <footer className="mt-auto border-t border-white/10 bg-[#0a1828] py-12">
+   452→   452→        <div className="container mx-auto px-4">
+   453→   453→          <div className="grid md:grid-cols-4 gap-8 mb-8">
+   454→   454→            <div className="space-y-3">
+   455→   455→              <div className="flex items-center gap-3">
+   456→   456→                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00bcd4] to-[#2d5a7c] flex items-center justify-center text-white">
+   457→   457→                  <Home className="w-5 h-5" />
+   458→   458→                </div>
+   459→   459→                <div>
+   460→   460→                  <h3 className="font-bold text-white">MIM Portal</h3>
+   461→   461→                  <p className="text-xs text-slate-500">Maid In Malaysia</p>
+   462→   462→                </div>
+   463→   463→              </div>
+   464→   464→              <p className="text-sm text-slate-400">
+   465→   465→                Platform pusat perkhidmatan pembantu rumah Malaysia oleh Kino Studios Sdn. Bhd.
+   466→   466→              </p>
+   467→   467→            </div>
+   468→   468→            <div>
+   469→   469→              <h4 className="font-semibold mb-3 text-sm text-white">Perkhidmatan</h4>
+   470→   470→              <ul className="space-y-2 text-sm text-slate-400">
+   471→   471→                <li>Pembantu Rumah (RM1,500-2,500)</li>
+   472→   472→                <li>Pengasuh (RM1,500-2,500)</li>
+   473→   473→                <li>Penjaga Orang Tua (RM1,700-3,500)</li>
+   474→   474→              </ul>
+   475→   475→            </div>
+   476→   476→            <div>
+   477→   477→              <h4 className="font-semibold mb-3 text-sm text-white">Pautan Pantas</h4>
+   478→   478→              <ul className="space-y-2 text-sm text-slate-400">
+   479→   479→                <li><Link href="/employer/register" className="hover:text-[#00bcd4] transition">Daftar Majikan</Link></li>
+   480→   480→                <li><Link href="/for-maids" className="hover:text-[#00bcd4] transition">Untuk Pembantu</Link></li>
+   481→   481→                <li><Link href="/employer/login" className="hover:text-[#00bcd4] transition">Log Masuk Majikan</Link></li>
+   482→   482→                <li><Link href="/helper/login" className="hover:text-[#00bcd4] transition">Log Masuk Pembantu</Link></li>
+   483→   483→                <li><Link href="/admin/login" className="hover:text-[#00bcd4] transition">Admin</Link></li>
+   484→   484→              </ul>
+   485→   485→            </div>
+   486→   486→            <div>
+   487→   487→              <h4 className="font-semibold mb-3 text-sm text-white">Hubungi Kami</h4>
+   488→   488→              <ul className="space-y-2 text-sm text-slate-400">
+   489→   489→                <li className="flex items-start gap-2"><MapPin className="w-4 h-4 mt-0.5 shrink-0 text-[#00bcd4]" />Ampang Jaya, Selangor, Malaysia</li>
+   490→   490→                <li className="flex items-center gap-2"><Phone className="w-4 h-4 shrink-0 text-[#00bcd4]" />+6017-663 5990</li>
+   491→   491→                <li className="flex items-center gap-2"><Mail className="w-4 h-4 shrink-0 text-[#00bcd4]" />hello@kino.my</li>
+   492→   492→                <li className="flex items-center gap-2"><Globe className="w-4 h-4 shrink-0 text-[#00bcd4]" />www.kino.my</li>
+   493→   493→              </ul>
+   494→   494→            </div>
+   495→   495→          </div>
+   496→   496→          <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-3 text-sm text-slate-500">
+   497→   497→            <p>&copy; 2026 Kino Studios Sdn. Bhd. (002138666-M). Semua hak terpelihara.</p>
+   498→   498→            <p>Brand: KinoCinema Media | Diketuai oleh Mahadzir Hanafiah</p>
+   499→   499→          </div>
+   500→   500→        </div>
+   501→   501→      </footer>
+   502→   502→    </div>
+   503→   503→  )
+   504→   504→}
+   505→   505→
+   506→   506→function Globe({ className }: { className?: string }) {
+   507→   507→  return (
+   508→   508→    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+   509→   509→      <circle cx="12" cy="12" r="10" />
+   510→   510→      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+   511→   511→      <path d="M2 12h20" />
+   512→   512→    </svg>
+   513→   513→  )
+   514→   514→}
+   515→   515→

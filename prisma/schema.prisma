@@ -1,0 +1,507 @@
+// MIM Portal - Prisma Schema
+// Compatible with both SQLite (local dev) and PostgreSQL (Supabase production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ====================================
+// Users & Auth
+// ====================================
+
+model Helper {
+  id              String   @id @default(cuid())
+  userId String? @unique @map("user_id")
+  fullName String @map("full_name")
+  nickname        String?
+  ic              String?
+  age             Int?
+  birthDate DateTime? @map("birth_date")
+  religion        String?
+  maritalStatus String? @map("marital_status")
+  education       String?
+  phone           String?
+  familyPhone String? @map("family_phone")
+  addressLine1 String? @map("address_line1")
+  addressLine2 String? @map("address_line2")
+  city            String?
+  state           String?
+  postalCode String? @map("postal_code")
+  country         String?  @default("Malaysia")
+  residencyState String? @map("residency_state")
+  workArea String? @map("work_area")
+  canRelocate Boolean @default(false) @map("can_relocate")
+  serviceType String? @map("service_type")  // Pembantu Rumah, Pengasuh, Penjaga Orang Tua
+  liveIn Boolean @default(false) @map("live_in")
+  backAndForth Boolean @default(false) @map("back_and_forth")
+  canBoth Boolean @default(false) @map("can_both")
+  desiredJob String? @map("desired_job")
+  skills          String?  // JSON array as string
+  childAges String? @map("child_ages")  // JSON array as string
+  otherSkills String? @map("other_skills")
+  motivation      String?
+  experience      String?
+  profilePhoto String? @map("profile_photo")
+  email           String?  @unique
+  password        String?
+  isFirstLogin Boolean @default(true) @map("is_first_login")
+  rating          Float    @default(5.0)
+  status          String   @default("pending") // pending, active, matched, employed
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  bookings         Booking[]
+  schedules        Schedule[]
+  contracts        Contract[]
+  payments         Payment[]
+  medicalRecords   MedicalRecord[]
+  interviews       Interview[]
+  helperNotifications Notification[] @relation("HelperNotifications")
+  helperMessages      Message[]      @relation("HelperMessages")
+  matchScores         MatchScore[]
+
+  @@map("mim_helpers")
+}
+
+model Employer {
+  id              String   @id @default(cuid())
+  userId String? @unique @map("user_id")
+  fullName String @map("full_name")
+  ic              String?
+  phone           String?
+  email           String?  @unique
+  password        String?
+  addressLine1 String? @map("address_line1")
+  addressLine2 String? @map("address_line2")
+  city            String?
+  state           String?
+  postalCode String? @map("postal_code")
+  country         String?  @default("Malaysia")
+  serviceType String? @map("service_type")
+  numKids Int @default(0) @map("num_kids")
+  kidsAges String? @map("kids_ages")
+  salaryOffered Float? @map("salary_offered")
+  joinDate DateTime? @map("join_date")
+  criteria        String?
+  contractExpiry DateTime? @map("contract_expiry")
+  profileData String? @map("profile_data")  // JSON as string
+  isFirstLogin Boolean @default(true) @map("is_first_login")
+  status          String   @default("pending")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  bookings         Booking[]
+  schedules        Schedule[]
+  contracts        Contract[]
+  payments         Payment[]
+  interviews       Interview[]
+  employerNotifications Notification[] @relation("EmployerNotifications")
+  employerMessages      Message[]      @relation("EmployerMessages")
+  matchScores         MatchScore[]
+
+  @@map("mim_employers")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  fullName String? @map("full_name")
+  role      String   @default("admin")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_admins")
+}
+
+// ====================================
+// Booking & Matching
+// ====================================
+
+model Booking {
+  id              String   @id @default(cuid())
+  employer        Employer @relation(fields: [employerId], references: [id])
+  employerId String @map("employer_id")
+  helper          Helper   @relation(fields: [helperId], references: [id])
+  helperId String @map("helper_id")
+  serviceType String? @map("service_type")
+  salary          Float?
+  startDate DateTime? @map("start_date")
+  durationMonths Int? @map("duration_months")
+  liveIn Boolean @default(false) @map("live_in")
+  specialRequests String? @map("special_requests")
+  status          String   @default("pending") // pending, confirmed, rejected, completed
+  adminNotes String? @map("admin_notes")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  contracts       Contract[]
+
+  @@map("mim_bookings")
+}
+
+model Contract {
+  id              String   @id @default(cuid())
+  booking         Booking? @relation(fields: [bookingId], references: [id])
+  bookingId String? @map("booking_id")
+  contractType String @map("contract_type")  // agency_helper, agency_employer, employer_helper
+  helper          Helper?  @relation(fields: [helperId], references: [id])
+  helperId String? @map("helper_id")
+  employer        Employer? @relation(fields: [employerId], references: [id])
+  employerId String? @map("employer_id")
+  content         String?
+  pdfUrl String? @map("pdf_url")
+  signedHelper Boolean @default(false) @map("signed_helper")
+  signedEmployer Boolean @default(false) @map("signed_employer")
+  signedAdmin Boolean @default(false) @map("signed_admin")
+  status          String   @default("draft")
+  startDate DateTime? @map("start_date")
+  endDate DateTime? @map("end_date")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("mim_contracts")
+}
+
+// ====================================
+// Operations
+// ====================================
+
+model Schedule {
+  id          String   @id @default(cuid())
+  helper      Helper   @relation(fields: [helperId], references: [id])
+  helperId String @map("helper_id")
+  employer    Employer? @relation(fields: [employerId], references: [id])
+  employerId String? @map("employer_id")
+  workDate DateTime @map("work_date")
+  startTime String? @map("start_time")
+  endTime String? @map("end_time")
+  isDayOff Boolean @default(false) @map("is_day_off")
+  notes       String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_schedules")
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  employer    Employer @relation(fields: [employerId], references: [id])
+  employerId String @map("employer_id")
+  helper      Helper?  @relation(fields: [helperId], references: [id])
+  helperId String? @map("helper_id")
+  amount      Float
+  dueDate DateTime? @map("due_date")
+  paidDate DateTime? @map("paid_date")
+  status      String   @default("pending") // pending, paid, overdue
+  method      String?
+  notes       String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_payments")
+}
+
+model VideoCourse {
+  id               String   @id @default(cuid())
+  title            String
+  description      String?
+  videoUrl String @map("video_url")
+  thumbnail        String?
+  category         String?
+  durationMinutes Int? @map("duration_minutes")
+  isPublished Boolean @default(true) @map("is_published")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  progress         CourseProgress[]
+
+  @@map("mim_video_courses")
+}
+
+model CourseProgress {
+  id              String   @id @default(cuid())
+  userId String @map("user_id")
+  userType String @map("user_type")  // helper, employer
+  course          VideoCourse @relation(fields: [courseId], references: [id])
+  courseId String @map("course_id")
+  watchedPercent Int @default(0) @map("watched_percent")
+  completed       Boolean  @default(false)
+  lastWatchedAt DateTime? @map("last_watched_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, courseId])
+  @@map("mim_course_progress")
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  title       String
+  docType String? @map("doc_type")  // faq, price, process, contract, medical
+  content     String?
+  fileUrl String? @map("file_url")
+  isPublished Boolean @default(true) @map("is_published")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_documents")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId String @map("user_id")
+  userType String @map("user_type")  // helper, employer
+  helper      Helper?  @relation("HelperNotifications", fields: [helperId], references: [id])
+  helperId String? @map("helper_id")
+  employer    Employer? @relation("EmployerNotifications", fields: [employerId], references: [id])
+  employerId String? @map("employer_id")
+  title       String
+  message     String?
+  isRead Boolean @default(false) @map("is_read")
+  link        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_notifications")
+}
+
+model Interview {
+  id          String   @id @default(cuid())
+  helper      Helper?  @relation(fields: [helperId], references: [id])
+  helperId String? @map("helper_id")
+  employer    Employer? @relation(fields: [employerId], references: [id])
+  employerId String? @map("employer_id")
+  meetUrl String? @map("meet_url")
+  recordingUrl String? @map("recording_url")
+  scheduledAt DateTime? @map("scheduled_at")
+  status      String   @default("scheduled")
+  notes       String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_interviews")
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  fromAdmin Boolean @default(true) @map("from_admin")
+  helper      Helper?  @relation("HelperMessages", fields: [helperId], references: [id])
+  helperId String? @map("helper_id")
+  employer    Employer? @relation("EmployerMessages", fields: [employerId], references: [id])
+  employerId String? @map("employer_id")
+  subject     String?
+  body        String
+  sentVia String @default("in_app") @map("sent_via")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_messages")
+}
+
+model MedicalRecord {
+  id          String   @id @default(cuid())
+  helper      Helper   @relation(fields: [helperId], references: [id])
+  helperId String @map("helper_id")
+  recordType String? @map("record_type")  // medical_health, vaccination
+  result      String?
+  fileUrl String? @map("file_url")
+  notes       String?
+  uploadDate DateTime? @map("upload_date")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_medical_records")
+}
+
+// ====================================
+// AGENTIC AI SYSTEM TABLES
+// ====================================
+
+model Agent {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  displayName String @map("display_name")
+  description   String?
+  category      String   // lead_gen, onboarding, matching, contract, operations, support, orchestrator
+  status        String   @default("idle") // idle, running, paused, error
+  lastRunAt DateTime? @map("last_run_at")
+  nextRunAt DateTime? @map("next_run_at")
+  schedule      String?  // cron expression or interval
+  config        String?  // JSON config
+  totalRuns Int @default(0) @map("total_runs")
+  successCount Int @default(0) @map("success_count")
+  errorCount Int @default(0) @map("error_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  activities    AgentActivity[]
+  leads         Lead[]
+  conversations Conversation[]
+  matchScores   MatchScore[]
+  referrals     Referral[]
+  contentQueue  ContentQueue[]
+  feedback      Feedback[]
+  agentMessages AgentMessage[]
+
+  @@map("mim_agents")
+}
+
+model AgentActivity {
+  id          String   @id @default(cuid())
+  agent       Agent    @relation(fields: [agentId], references: [id])
+  agentId String @map("agent_id")
+  action      String   // e.g., "scan_facebook", "send_whatsapp", "generate_contract"
+  status      String   // success, error, pending
+  input       String?  // JSON input
+  output      String?  // JSON output
+  errorMessage String? @map("error_message")
+  duration    Int?     // milliseconds
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_agent_activities")
+}
+
+model Lead {
+  id            String   @id @default(cuid())
+  agent         Agent?   @relation(fields: [agentId], references: [id])
+  agentId String? @map("agent_id")
+  leadType String @map("lead_type")  // helper, employer
+  source        String   // facebook, referral, content, ads, manual
+  sourceUrl String? @map("source_url")
+  contactName String? @map("contact_name")
+  contactPhone String? @map("contact_phone")
+  contactEmail String? @map("contact_email")
+  profileData String? @map("profile_data")  // JSON: scraped profile info
+  status        String   @default("new") // new, contacted, qualified, converted, rejected
+  score         Float?   // AI quality score 0-100
+  notes         String?
+  convertedTo String? @map("converted_to")  // helper_id or employer_id if converted
+  contactedAt DateTime? @map("contacted_at")
+  qualifiedAt DateTime? @map("qualified_at")
+  convertedAt DateTime? @map("converted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("mim_leads")
+}
+
+model Conversation {
+  id          String   @id @default(cuid())
+  agent       Agent?   @relation(fields: [agentId], references: [id])
+  agentId String? @map("agent_id")
+  userId String @map("user_id")  // helper_id, employer_id, or lead_id
+  userType String @map("user_type")  // helper, employer, lead
+  channel     String   @default("whatsapp") // whatsapp, web, in_app
+  status      String   @default("active") // active, completed, escalated, abandoned
+  context     String?  // JSON: conversation context/state
+  summary     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  messages    AgentMessage[]
+
+  @@map("mim_conversations")
+}
+
+model AgentMessage {
+  id              String   @id @default(cuid())
+  conversation    Conversation? @relation(fields: [conversationId], references: [id])
+  conversationId String? @map("conversation_id")
+  agent           Agent?   @relation(fields: [agentId], references: [id])
+  agentId String? @map("agent_id")
+  sender          String   // user, agent, system
+  content         String
+  messageType String @default("text") @map("message_type")  // text, image, template, button
+  metadata        String?  // JSON
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_agent_messages")
+}
+
+model MatchScore {
+  id          String   @id @default(cuid())
+  agent       Agent?   @relation(fields: [agentId], references: [id])
+  agentId String? @map("agent_id")
+  helper      Helper   @relation(fields: [helperId], references: [id])
+  helperId String @map("helper_id")
+  employer    Employer @relation(fields: [employerId], references: [id])
+  employerId String @map("employer_id")
+  score       Float    // 0-100 compatibility score
+  reasoning   String?  // AI explanation
+  factors     String?  // JSON: breakdown of scoring factors
+  status      String   @default("suggested") // suggested, viewed, accepted, rejected, matched
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([helperId, employerId])
+  @@map("mim_match_scores")
+}
+
+model Referral {
+  id            String   @id @default(cuid())
+  agent         Agent?   @relation(fields: [agentId], references: [id])
+  agentId String? @map("agent_id")
+  referrerType String @map("referrer_type")  // helper, employer
+  referrerId String @map("referrer_id")
+  referrerName String @map("referrer_name")
+  referrerPhone String @map("referrer_phone")
+  referredName String @map("referred_name")
+  referredPhone String @map("referred_phone")
+  referredEmail String? @map("referred_email")
+  status        String   @default("pending") // pending, contacted, converted, rejected
+  rewardType String? @map("reward_type")  // cash, discount, voucher
+  rewardAmount Float? @map("reward_amount")
+  rewardStatus String? @map("reward_status")  // pending, paid
+  convertedAt DateTime? @map("converted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_referrals")
+}
+
+model ContentQueue {
+  id          String   @id @default(cuid())
+  agent       Agent?   @relation(fields: [agentId], references: [id])
+  agentId String? @map("agent_id")
+  platform    String   // facebook, instagram, tiktok, twitter, blog
+  contentType String @map("content_type")  // post, story, reel, article
+  title       String?
+  content     String
+  hashtags    String?
+  mediaUrl String? @map("media_url")
+  scheduledAt DateTime? @map("scheduled_at")
+  postedAt DateTime? @map("posted_at")
+  status      String   @default("draft") // draft, scheduled, posted, failed
+  metrics     String?  // JSON: likes, shares, comments, reach
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_content_queue")
+}
+
+model Feedback {
+  id          String   @id @default(cuid())
+  agent       Agent?   @relation(fields: [agentId], references: [id])
+  agentId String? @map("agent_id")
+  userId String @map("user_id")
+  userType String @map("user_type")  // helper, employer
+  feedbackType String @map("feedback_type")  // week_1, month_1, quarterly, ad_hoc
+  rating      Int      // 1-5
+  category    String?  // satisfaction, issue, suggestion, complaint
+  comments    String?
+  sentiment   String?  // positive, neutral, negative
+  actionTaken String? @map("action_taken")  // AI recommended action
+  resolvedAt DateTime? @map("resolved_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_feedback")
+}
+
+model AgentNotification {
+  id          String   @id @default(cuid())
+  agentName String? @map("agent_name")
+  category    String   // match, lead, payment, contract, alert, summary
+  severity    String   @default("info") // info, warning, critical
+  title       String
+  message     String
+  actionUrl String? @map("action_url")
+  isRead Boolean @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("mim_agent_notifications")
+}
+
