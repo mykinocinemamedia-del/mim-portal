@@ -15,7 +15,7 @@ import {
   Home, Baby, Accessibility, Bot, Zap, TrendingUp, CreditCard,
   UserPlus, UserCheck, MonitorPlay, PenTool, Rocket,
   Search, Filter, Award, Wallet, Users2, Headphones, ChevronRight,
-  Bell, BadgeCheck, CalendarClock, ScanSearch, RefreshCw, Download
+  Bell, BadgeCheck, CalendarClock, ScanSearch, RefreshCw, BookOpen
 } from 'lucide-react'
 import { waCompanyLink, formatMYR, getServiceLabel, SKILLS_OPTIONS } from '@/lib/utils'
 import { db } from '@/lib/db'
@@ -282,65 +282,32 @@ export default async function MimLandingPageEn() {
         </div>
       </section>
 
-      {/* Promo Video Section */}
-      <section className="py-20 bg-gradient-to-br from-[#0a1828] to-[#0d1f33] relative overflow-hidden">
+      {/* How to Use Section */}
+      <section className="py-16 bg-gradient-to-br from-[#0a1828] to-[#0d1f33] relative overflow-hidden">
         <div className="absolute top-0 left-0 w-96 h-96 bg-[#00bcd4]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#2d5a7c]/15 rounded-full blur-3xl" />
-
-        <div className="container mx-auto px-4 relative">
-          <div className="text-center mb-12">
-            <Badge variant="secondary" className="mb-3 bg-[#00bcd4]/15 text-[#00bcd4] border-[#00bcd4]/20">
-              <Video className="w-3.5 h-3.5 mr-1.5" />Promo Video
-            </Badge>
-            <h2 className="text-3xl md:text-5xl font-light text-white mb-3">Get to Know <span className="gradient-text font-semibold">MIM Portal</span></h2>
-            <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-              Watch how MIM Portal helps Malaysian families find the right house helper.
-            </p>
-          </div>
-
-          <div className="max-w-4xl mx-auto space-y-8">
-            {/* MIM Portal Enhanced Video (voiceover + motion) */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm text-[#00bcd4] font-medium">🎬 MIM Portal Video - USP Features & Steps (Enhanced)</p>
-                <a href="/videos/mim-promo-enhanced.mp4" download className="text-xs text-slate-400 hover:text-[#00bcd4] transition inline-flex items-center gap-1">
-                  <Download className="w-3 h-3" /> Download
-                </a>
-              </div>
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10">
-                <video
-                  className="w-full"
-                  controls
-                  autoPlay
-                  loop
-                  playsInline
-                  poster="/images/pixar/hero.png"
-                >
-                  <source src="/videos/mim-promo-enhanced.mp4" type="video/mp4" />
-                  Your browser does not support video.
-                </video>
-              </div>
-            </div>
-
-            {/* YouTube Promo Video */}
-            <div>
-              <p className="text-center text-sm text-slate-400 mb-3">YouTube Video</p>
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10">
-                <div className="relative" style={{ paddingBottom: '56.25%' }}>
-                  <iframe
-                    className="absolute top-0 left-0 w-full h-full"
-                    src="https://www.youtube.com/embed/3-M09WyY6Rw"
-                    title="MIM Portal - Promo Video"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              </div>
-            </div>
+        <div className="container mx-auto px-4 relative text-center">
+          <Badge variant="secondary" className="mb-3 bg-[#00bcd4]/15 text-[#00bcd4] border-[#00bcd4]/20">
+            <BookOpen className="w-3.5 h-3.5 mr-1.5" />User Guide
+          </Badge>
+          <h2 className="text-3xl md:text-4xl font-light text-white mb-3">How to <span className="gradient-text font-semibold">Use MIM Portal?</span></h2>
+          <p className="text-slate-400 max-w-2xl mx-auto mb-6">
+            See step-by-step guides for employers and helpers. Understand the full flow before getting started.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/how-to-use">
+              <Button size="lg" className="btn-rounded bg-[#00bcd4] hover:bg-[#00a5bb] text-white border-0 px-8">
+                <BookOpen className="w-4 h-4 mr-2" /> View Full Guide
+              </Button>
+            </Link>
+            <a href={waCompanyLink("Hi, I want to know how to use MIM Portal.")} target="_blank" rel="noopener noreferrer">
+              <Button size="lg" variant="outline" className="btn-rounded border-[#00bcd4]/40 text-[#00bcd4] hover:bg-[#00bcd4]/10 hover:text-white px-8">
+                <MessageCircle className="w-4 h-4 mr-2" /> Ask on WhatsApp
+              </Button>
+            </a>
           </div>
         </div>
       </section>
+
 
       {/* Featured Helpers */}
       <section id="maids" className="py-20 bg-[#102943] relative overflow-hidden">
