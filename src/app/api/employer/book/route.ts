@@ -23,9 +23,9 @@ export async function POST(req: NextRequest) {
       specialRequests,
     } = body as {
       helperId: string
-      salary: number
+      salary: string | number
       startDate: string
-      durationMonths: number
+      durationMonths: string | number
       liveIn: boolean
       specialRequests?: string
     }
@@ -55,7 +55,9 @@ export async function POST(req: NextRequest) {
     // Verify salary within range
     const serviceType = helper.serviceType || helper.desiredJob
     const range = getServiceSalaryRange(serviceType)
-    if (range && (salary < range.min || salary > range.max)) {
+    const salaryNum = typeof salary === 'number' ? salary : parseFloat(salary)
+    const durationNum = typeof durationMonths === 'number' ? durationMonths : parseInt(durationMonths, 10)
+    if (range && (salaryNum < range.min || salaryNum > range.max)) {
       return NextResponse.json(
         {
           error: `Gaji mesti antara ${formatMYR(range.min)} - ${formatMYR(range.max)} untuk jenis perkhidmatan ini`,
@@ -70,9 +72,9 @@ export async function POST(req: NextRequest) {
         employerId: session.id,
         helperId,
         serviceType: serviceType,
-        salary: parseFloat(salary),
+        salary: salaryNum,
         startDate: new Date(startDate),
-        durationMonths: parseInt(durationMonths),
+        durationMonths: durationNum,
         liveIn: !!liveIn,
         specialRequests: specialRequests || null,
         status: 'pending',
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest) {
         userId: 'admin',
         userType: 'admin',
         title: 'Tempahan Baru',
-        message: `${session.name} telah menempah pembantu ${helper.fullName} (${formatMYR(parseFloat(salary))}/bulan).`,
+        message: `${session.name} telah menempah pembantu ${helper.fullName} (${formatMYR(salaryNum)}/bulan).`,
         link: '/admin/bookings',
       },
     })

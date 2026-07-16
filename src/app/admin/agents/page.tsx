@@ -55,11 +55,29 @@ export default async function AdminAgentsPage() {
 
   let totalLeads = 0, unreadNotifications = 0, pendingContracts = 0, overduePayments = 0
   let totalMatches = 0
+  let newLeads = 0
+  let highScoreMatches = 0
+  let activeConversations = 0
+  let convertedLeads = 0
+  let contentDrafts = 0
   let notifications: any[] = []
 
   try {
-    // OPTIMIZED: Only 3 queries total (was 5+), all in parallel
-    const [dbAgents, stats, notifs] = await Promise.all([
+    // OPTIMIZED: All queries in parallel - graceful fallback on any error
+    const [
+      dbAgents,
+      leadCount,
+      newLeadsCount,
+      convertedLeadsCount,
+      unreadNotifCount,
+      totalMatchCount,
+      highScoreMatchCount,
+      activeConvCount,
+      contentDraftCount,
+      pendingContractCount,
+      overduePaymentCount,
+      notifs,
+    ] = await Promise.all([
       db.agent.findMany({
         select: { 
           id: true, name: true, displayName: true, description: true, category: true,
@@ -68,10 +86,16 @@ export default async function AdminAgentsPage() {
         },
         orderBy: { category: 'asc' },
       }).catch(() => []),
-      Promise.all([
-        db.lead.count().catch(() => 0),
-        db.agentNotification.count({ where: { isRead: false } }).catch(() => 0),
-      ]),
+      db.lead.count().catch(() => 0),
+      db.lead.count({ where: { status: 'new' } }).catch(() => 0),
+      db.lead.count({ where: { status: 'converted' } }).catch(() => 0),
+      db.agentNotification.count({ where: { isRead: false } }).catch(() => 0),
+      db.matchScore.count().catch(() => 0),
+      db.matchScore.count({ where: { score: { gte: 85 } } }).catch(() => 0),
+      db.conversation.count({ where: { status: 'active' } }).catch(() => 0),
+      db.contentQueue.count({ where: { status: 'draft' } }).catch(() => 0),
+      db.contract.count({ where: { status: { in: ['draft', 'pending'] } } }).catch(() => 0),
+      db.payment.count({ where: { status: 'overdue' } }).catch(() => 0),
       db.agentNotification.findMany({
         where: { isRead: false },
         orderBy: { createdAt: 'desc' },
@@ -82,15 +106,25 @@ export default async function AdminAgentsPage() {
 
     // Merge DB stats into registry agents if DB has data
     if (dbAgents.length > 0) {
-      const dbMap = new Map(dbAgents.map(a => [a.name, a]))
+      const dbMap = new Map<string, typeof dbAgents[number]>(
+        dbAgents.map(a => [a.name, a] as const)
+      )
       agents = agents.map(a => {
         const dbData = dbMap.get(a.name)
         return dbData ? { ...a, ...dbData, activities: [] } : a
       })
     }
 
-    totalLeads = stats[0]
-    unreadNotifications = stats[1]
+    totalLeads = leadCount
+    newLeads = newLeadsCount
+    convertedLeads = convertedLeadsCount
+    unreadNotifications = unreadNotifCount
+    totalMatches = totalMatchCount
+    highScoreMatches = highScoreMatchCount
+    activeConversations = activeConvCount
+    contentDrafts = contentDraftCount
+    pendingContracts = pendingContractCount
+    overduePayments = overduePaymentCount
     notifications = notifs
   } catch (e: any) {
     console.error('Agents page error:', e.message)
@@ -101,7 +135,7 @@ export default async function AdminAgentsPage() {
     if (!acc[agent.category]) acc[agent.category] = []
     acc[agent.category].push(agent)
     return acc
-  }, {} as Record<string, typeof agents>)
+  }, {} as Record<string, any[]>)
 
   return (
     <DashboardShell role="admin" user={{ name: session.name, email: session.email }}>
@@ -226,7 +260,7 @@ export default async function AdminAgentsPage() {
         )}
 
         {/* Agents by Category */}
-        {Object.entries(agentsByCategory).map(([category, categoryAgents]) => {
+        {(Object.entries(agentsByCategory) as [string, any[]][]).map(([category, categoryAgents]) => {
           const config = categoryConfig[category] || categoryConfig.orchestrator
           const Icon = config.icon
           return (

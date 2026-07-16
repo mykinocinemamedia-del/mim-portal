@@ -79,9 +79,9 @@ export default async function AdminHelpersPage({
     orderBy: { createdAt: 'desc' },
     take: 50, // Limit to 50 per page for performance
     select: {
-      id: true, fullName: true, serviceType: true, status: true,
-      rating: true, city: true, state: true, phone: true, email: true,
-      createdAt: true, _count: { select: { bookings: true } },
+      id: true, fullName: true, nickname: true, serviceType: true, status: true,
+      rating: true, city: true, state: true, workArea: true, phone: true, email: true,
+      profilePhoto: true, createdAt: true, _count: { select: { bookings: true } },
     },
   })
 
