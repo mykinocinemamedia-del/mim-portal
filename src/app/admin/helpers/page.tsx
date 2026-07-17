@@ -62,28 +62,38 @@ export default async function AdminHelpersPage({
   const sp = await searchParams
   const statusFilter = sp.status || 'all'
   const query = (sp.q || '').trim()
+  const page = parseInt(sp.page || '1')
+  const pageSize = 20
+  const skip = (page - 1) * pageSize
 
   const where: any = {}
   if (statusFilter !== 'all') where.status = statusFilter
   if (query) {
     where.OR = [
-      { fullName: { contains: query } },
+      { fullName: { contains: query, mode: 'insensitive' } },
       { phone: { contains: query } },
-      { email: { contains: query } },
-      { nickname: { contains: query } },
+      { email: { contains: query, mode: 'insensitive' } },
+      { nickname: { contains: query, mode: 'insensitive' } },
+      { city: { contains: query, mode: 'insensitive' } },
+      { state: { contains: query, mode: 'insensitive' } },
     ]
   }
 
-  const helpers = await db.helper.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    take: 50, // Limit to 50 per page for performance
-    select: {
-      id: true, fullName: true, nickname: true, serviceType: true, status: true,
-      rating: true, city: true, state: true, workArea: true, phone: true, email: true,
-      profilePhoto: true, createdAt: true, _count: { select: { bookings: true } },
-    },
-  })
+  const [helpers, totalCount] = await Promise.all([
+    db.helper.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: pageSize,
+      select: {
+        id: true, fullName: true, nickname: true, serviceType: true, status: true,
+        rating: true, city: true, state: true, workArea: true, phone: true, email: true,
+        profilePhoto: true, createdAt: true, _count: { select: { bookings: true } },
+      },
+    }),
+    db.helper.count({ where }),
+  ])
+  const totalPages = Math.ceil(totalCount / pageSize)
 
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
@@ -108,7 +118,7 @@ export default async function AdminHelpersPage({
               Pengurusan Pembantu
             </h1>
             <p className="text-muted-foreground mt-1">
-              {helpers.length} pembantu berdaftar di portal MIM.
+              {totalCount} pembantu berdaftar • Menunjukkan {helpers.length} (Page {page}/{totalPages})
             </p>
           </div>
           <Button asChild>
@@ -379,6 +389,23 @@ export default async function AdminHelpersPage({
               ))}
             </div>
           </>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-4">
+            {page > 1 && (
+              <Link href={`/admin/helpers?status=${statusFilter}${query ? `&q=${encodeURIComponent(query)}` : ''}&page=${page - 1}`}>
+                <Button variant="outline" size="sm" className="border-white/10 text-slate-300">← Sebelum</Button>
+              </Link>
+            )}
+            <span className="text-sm text-slate-400">Page {page} of {totalPages}</span>
+            {page < totalPages && (
+              <Link href={`/admin/helpers?status=${statusFilter}${query ? `&q=${encodeURIComponent(query)}` : ''}&page=${page + 1}`}>
+                <Button variant="outline" size="sm" className="border-white/10 text-slate-300">Seterus →</Button>
+              </Link>
+            )}
+          </div>
         )}
       </div>
     </DashboardShell>

@@ -12,7 +12,7 @@ import {
   Home, LogOut, Menu, Bell, ChevronRight, User, Calendar,
   Video, FileText, Settings, KeyRound, HelpCircle, Briefcase,
   Users, Search, CreditCard, MessageCircle, ShieldCheck,
-  Stethoscope, GraduationCap, ClipboardList, Bot, Upload
+  Stethoscope, GraduationCap, ClipboardList, Bot, Upload, TrendingUp
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 
@@ -44,6 +44,7 @@ const navByRole: Record<'helper' | 'employer' | 'admin', NavItem[]> = {
   ],
   admin: [
     { href: '/admin/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/admin/overview', label: '📊 Overview', icon: TrendingUp },
     { href: '/admin/match', label: 'Padan Pembantu', icon: Users },
     { href: '/admin/helpers', label: 'Pembantu', icon: Briefcase },
     { href: '/admin/employers', label: 'Majikan', icon: User },
