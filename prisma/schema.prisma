@@ -159,6 +159,16 @@ model Contract {
   signedHelper Boolean @default(false) @map("signed_helper")
   signedEmployer Boolean @default(false) @map("signed_employer")
   signedAdmin Boolean @default(false) @map("signed_admin")
+  // E-signature tracking
+  helperSignatureToken String? @map("helper_signature_token")
+  employerSignatureToken String? @map("employer_signature_token")
+  adminSignatureToken String? @map("admin_signature_token")
+  helperSignedAt DateTime? @map("helper_signed_at")
+  employerSignedAt DateTime? @map("employer_signed_at")
+  adminSignedAt DateTime? @map("admin_signed_at")
+  helperSignedIp String? @map("helper_signed_ip")
+  employerSignedIp String? @map("employer_signed_ip")
+  adminSignedIp String? @map("admin_signed_ip")
   status          String   @default("draft")
   startDate DateTime? @map("start_date")
   endDate DateTime? @map("end_date")
@@ -200,6 +210,9 @@ model Payment {
   status      String   @default("pending") // pending, paid, overdue
   method      String?
   notes       String?
+  // ToyyibPay integration
+  paymentLinkUrl String? @map("payment_link_url")
+  toyyibpayBillCode String? @map("toyyibpay_bill_code")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("mim_payments")

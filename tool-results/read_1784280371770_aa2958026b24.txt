@@ -1,0 +1,920 @@
+     1→/**
+     2→ * Auto-Contract Agent
+     3→ * --------------------
+     4→ * Automatically generates the 3 contract types (agency_helper, agency_employer,
+     5→ * employer_helper) when a booking is confirmed but has no contracts yet. Sends
+     6→ * WhatsApp to all 3 parties (helper, employer, admin) with contract link. Sends
+     7→ * 3-day reminder if not signed. After 7 days, marks as 'expired' and notifies
+     8→ * admin. When all 3 contracts signed by all parties, marks them 'active' and
+     9→ * updates booking status.
+    10→ *
+    11→ * Behavior:
+    12→ *   - Find bookings with status 'confirmed' that have no contracts
+    13→ *   - For each: generate 3 contracts (using AI to personalize content)
+    14→ *   - Store contracts with status='draft'
+    15→ *   - Send WhatsApp to helper, employer, admin with contract link
+    16→ *   - 3 days after creation: reminder if not signed
+    17→ *   - 7 days after creation: mark 'expired', notify admin
+    18→ *   - When all 3 contracts fully signed (helper + employer + admin): mark 'active'
+    19→ *     and update booking status
+    20→ *
+    21→ * Schedule: Every 4 hours
+    22→ */
+    23→
+    24→import { BaseAgent, AgentContext, AgentRunResult, agentRegistry } from '@/lib/agents/core/base-agent'
+    25→import { aiChat, parseAIJson, type ChatMessage } from '@/lib/ai/provider'
+    26→import { sendWhatsApp } from '@/lib/agents/integrations/whatsapp'
+    27→import { db } from '@/lib/db'
+    28→
+    29→// Time windows (in milliseconds)
+    30→const DAY_MS = 24 * 60 * 60 * 1000
+    31→const REMINDER_AFTER_DAYS = 3
+    32→const EXPIRE_AFTER_DAYS = 7
+    33→const MAX_BOOKINGS_PER_RUN = 10
+    34→
+    35→// Company info from env vars (fallback to defaults)
+    36→const COMPANY = {
+    37→  name: process.env.NEXT_PUBLIC_COMPANY_NAME || 'Kino Studios Sdn. Bhd.',
+    38→  brand: process.env.NEXT_PUBLIC_BRAND || 'KinoCinema Media',
+    39→  ssm: process.env.NEXT_PUBLIC_COMPANY_SSM || '002138666-M',
+    40→  email: process.env.NEXT_PUBLIC_COMPANY_EMAIL || 'hello@kino.my',
+    41→  phone: process.env.NEXT_PUBLIC_COMPANY_PHONE || '+6017-663 5990',
+    42→  address:
+    43→    process.env.NEXT_PUBLIC_COMPANY_ADDRESS ||
+    44→    'Ampang Jaya, Selangor Darul Ehsan, Malaysia',
+    45→  signatory: process.env.NEXT_PUBLIC_SIGNATORY || 'Mahadzir Hanafiah',
+    46→  website: process.env.NEXT_PUBLIC_COMPANY_WEBSITE || 'www.kino.my',
+    47→}
+    48→
+    49→const ADMIN_PHONE = COMPANY.phone // admin notified via company WhatsApp
+    50→
+    51→const CONTRACT_TYPES = ['agency_helper', 'agency_employer', 'employer_helper'] as const
+    52→type ContractType = (typeof CONTRACT_TYPES)[number]
+    53→
+    54→interface AIPersonalization {
+    55→  specialClauses: string[]
+    56→  responsibilities: string[]
+    57→  notes: string
+    58→}
+    59→
+    60→class ContractAgent extends BaseAgent {
+    61→  readonly name = 'contract_agent'
+    62→  readonly displayName = 'Auto-Contract Agent'
+    63→  readonly description =
+    64→    'Jana automatik 3 jenis kontrak (agensi-pembantu, agensi-majikan, majikan-pembantu) apabila tempahan disahkan. Hantar peringatan 3 hari, tamat tempoh 7 hari, dan aktifkan kontrak apabila semua pihak menandatangani.'
+    65→  readonly category = 'contract'
+    66→  readonly schedule = 'Every 4 hours'
+    67→
+    68→  protected async execute(context: AgentContext): Promise<AgentRunResult> {
+    69→    const stats = {
+    70→      bookingsScanned: 0,
+    71→      contractsGenerated: 0,
+    72→      remindersSent: 0,
+    73→      expiredCount: 0,
+    74→      activatedCount: 0,
+    75→      whatsappSent: 0,
+    76→      errors: 0,
+    77→    }
+    78→
+    79→    try {
+    80→      // Phase 1: Generate contracts for newly-confirmed bookings
+    81→      stats.contractsGenerated = await this.generateContractsForConfirmedBookings(stats)
+    82→
+    83→      // Phase 2: Send reminders for unsigned contracts (3 days old)
+    84→      stats.remindersSent = await this.sendSigningReminders(stats)
+    85→
+    86→      // Phase 3: Expire contracts after 7 days unsigned
+    87→      stats.expiredCount = await this.expireStaleContracts(stats)
+    88→
+    89→      // Phase 4: Activate contracts fully signed by all 3 parties
+    90→      stats.activatedCount = await this.activateFullySignedContracts(stats)
+    91→
+    92→      const summary =
+    93→        `Auto-Contract: ${stats.contractsGenerated} kontrak baru dijana (3 jenis setiap tempahan), ` +
+    94→        `${stats.remindersSent} peringatan dihantar, ${stats.expiredCount} kontrak ditamatkan (7 hari), ` +
+    95→        `${stats.activatedCount} kontrak diaktifkan (semua tandatangan). ` +
+    96→        `${stats.whatsappSent} WhatsApp berjaya. Errors: ${stats.errors}.`
+    97→
+    98→      await this.notify({
+    99→        category: 'contract',
+   100→        severity: 'info',
+   101→        title: 'Auto-Contract Run Selesai',
+   102→        message: summary,
+   103→        actionUrl: '/admin/contracts',
+   104→      })
+   105→
+   106→      return { success: true, summary, data: stats }
+   107→    } catch (e: any) {
+   108→      return {
+   109→        success: false,
+   110→        summary: 'Auto-Contract Agent gagal dijalankan',
+   111→        error: e.message || String(e),
+   112→        data: stats,
+   113→      }
+   114→    }
+   115→  }
+   116→
+   117→  /**
+   118→   * Phase 1: Find confirmed bookings without contracts. For each, generate
+   119→   * 3 contracts (agency_helper, agency_employer, employer_helper) with AI-personalized
+   120→   * content, store with status='draft', and send WhatsApp to all parties.
+   121→   */
+   122→  private async generateContractsForConfirmedBookings(stats: any): Promise<number> {
+   123→    let generated = 0
+   124→
+   125→    try {
+   126→      // Find confirmed bookings that have NO contracts yet
+   127→      const confirmedBookings = await db.booking.findMany({
+   128→        where: {
+   129→          status: 'confirmed',
+   130→          contracts: { none: {} },
+   131→        },
+   132→        include: {
+   133→          helper: {
+   134→            select: {
+   135→              id: true,
+   136→              fullName: true,
+   137→              nickname: true,
+   138→              ic: true,
+   139→              phone: true,
+   140→              email: true,
+   141→              addressLine1: true,
+   142→              addressLine2: true,
+   143→              city: true,
+   144→              state: true,
+   145→              postalCode: true,
+   146→              serviceType: true,
+   147→              desiredJob: true,
+   148→              religion: true,
+   149→              skills: true,
+   150→              otherSkills: true,
+   151→              experience: true,
+   152→              liveIn: true,
+   153→              backAndForth: true,
+   154→            },
+   155→          },
+   156→          employer: {
+   157→            select: {
+   158→              id: true,
+   159→              fullName: true,
+   160→              ic: true,
+   161→              phone: true,
+   162→              email: true,
+   163→              addressLine1: true,
+   164→              addressLine2: true,
+   165→              city: true,
+   166→              state: true,
+   167→              postalCode: true,
+   168→              serviceType: true,
+   169→              numKids: true,
+   170→              kidsAges: true,
+   171→              salaryOffered: true,
+   172→              criteria: true,
+   173→            },
+   174→          },
+   175→        },
+   176→        take: MAX_BOOKINGS_PER_RUN,
+   177→      })
+   178→
+   179→      stats.bookingsScanned = confirmedBookings.length
+   180→
+   181→      for (const booking of confirmedBookings) {
+   182→        try {
+   183→          // Use AI to personalize contract content based on helper/employer details
+   184→          const personalization = await this.generateAIPersonalization(booking.helper, booking.employer, booking)
+   185→
+   186→          // Generate 3 contracts
+   187→          const startDate = booking.startDate || new Date()
+   188→          const durationMonths = booking.durationMonths || 12
+   189→          const endDate = new Date(startDate)
+   190→          endDate.setMonth(endDate.getMonth() + durationMonths)
+   191→
+   192→          for (const contractType of CONTRACT_TYPES) {
+   193→            try {
+   194→              const content = this.buildContractContent(
+   195→                contractType,
+   196→                booking.helper,
+   197→                booking.employer,
+   198→                booking,
+   199→                personalization
+   200→              )
+   201→
+   202→              await db.contract.create({
+   203→                data: {
+   204→                  bookingId: booking.id,
+   205→                  contractType,
+   206→                  helperId: booking.helperId,
+   207→                  employerId: booking.employerId,
+   208→                  content,
+   209→                  status: 'draft',
+   210→                  signedHelper: false,
+   211→                  signedEmployer: false,
+   212→                  signedAdmin: false,
+   213→                  startDate,
+   214→                  endDate,
+   215→                },
+   216→              })
+   217→              generated++
+   218→            } catch (e: any) {
+   219→              stats.errors++
+   220→              await this.logActivity({
+   221→                action: 'generate_contract',
+   222→                status: 'error',
+   223→                input: JSON.stringify({
+   224→                  bookingId: booking.id,
+   225→                  contractType,
+   226→                }),
+   227→                errorMessage: e.message || String(e),
+   228→              })
+   229→            }
+   230→          }
+   231→
+   232→          // Send WhatsApp to all 3 parties (helper, employer, admin)
+   233→          const whatsappResults = await this.notifyContractsCreated(booking)
+   234→          stats.whatsappSent += whatsappResults
+   235→
+   236→          await this.logActivity({
+   237→            action: 'generate_contracts_for_booking',
+   238→            status: 'success',
+   239→            input: JSON.stringify({
+   240→              bookingId: booking.id,
+   241→              helperName: booking.helper.fullName,
+   242→              employerName: booking.employer.fullName,
+   243→            }),
+   244→            output: JSON.stringify({
+   245→              contractsCreated: 3,
+   246→              whatsappSent: whatsappResults,
+   247→            }),
+   248→          })
+   249→        } catch (e: any) {
+   250→          stats.errors++
+   251→          await this.logActivity({
+   252→            action: 'process_confirmed_booking',
+   253→            status: 'error',
+   254→            input: JSON.stringify({ bookingId: booking.id }),
+   255→            errorMessage: e.message || String(e),
+   256→          })
+   257→        }
+   258→      }
+   259→    } catch (e: any) {
+   260→      stats.errors++
+   261→      await this.logActivity({
+   262→        action: 'generate_contracts_scan',
+   263→        status: 'error',
+   264→        input: JSON.stringify({}),
+   265→        errorMessage: e.message || String(e),
+   266→      })
+   267→    }
+   268→
+   269→    return generated
+   270→  }
+   271→
+   272→  /**
+   273→   * Phase 2: Send signing reminder WhatsApp to unsigned contracts older than 3 days.
+   274→   * Uses notes field marker '[REMINDER_SENT]' to avoid duplicates.
+   275→   */
+   276→  private async sendSigningReminders(stats: any): Promise<number> {
+   277→    let sent = 0
+   278→
+   279→    try {
+   280→      const now = Date.now()
+   281→      const reminderThreshold = new Date(now - REMINDER_AFTER_DAYS * DAY_MS)
+   282→
+   283→      // Contracts that are draft, not fully signed, older than 3 days, no reminder yet
+   284→      const unsignedContracts = await db.contract.findMany({
+   285→        where: {
+   286→          status: 'draft',
+   287→          createdAt: { lte: reminderThreshold },
+   288→          // Hasn't been reminded yet
+   289→          content: { not: { contains: '[CONTRACT_REMINDER_SENT]' } },
+   290→          // Not fully signed
+   291→          OR: [
+   292→            { signedHelper: false },
+   293→            { signedEmployer: false },
+   294→            { signedAdmin: false },
+   295→          ],
+   296→        },
+   297→        include: {
+   298→          helper: { select: { id: true, fullName: true, phone: true } },
+   299→          employer: { select: { id: true, fullName: true, phone: true } },
+   300→          booking: { select: { id: true } },
+   301→        },
+   302→        take: 30,
+   303→      })
+   304→
+   305→      // Group by booking to avoid sending duplicate reminders for the same booking
+   306→      const byBooking = new Map<string, typeof unsignedContracts>()
+   307→      for (const c of unsignedContracts) {
+   308→        const key = c.bookingId || c.id
+   309→        if (!byBooking.has(key)) byBooking.set(key, [])
+   310→        byBooking.get(key)!.push(c)
+   311→      }
+   312→
+   313→      for (const [, contracts] of byBooking) {
+   314→        try {
+   315→          const first = contracts[0]
+   316→          const helper = first.helper
+   317→          const employer = first.employer
+   318→
+   319→          const contractLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://mim-portal.vercel.app'}/admin/contracts`
+   320→
+   321→          // Build reminder message
+   322→          const buildReminder = (name: string, role: 'helper' | 'employer') => {
+   323→            const roleLabel = role === 'helper' ? 'Pembantu' : 'Majikan'
+   324→            return (
+   325→              `📋 Peringatan Tandatangan Kontrak MIM Portal\n\n` +
+   326→              `Hai ${name},\n\n` +
+   327→              `Kontrak anda sebagai ${roleLabel} masih belum ditandatangani. ` +
+   328→              `Sila tandatangani sebelum kontrak tamat tempoh (7 hari dari tarikh dijana).\n\n` +
+   329→              `🔗 Link kontrak: ${contractLink}\n\n` +
+   330→              `Jika ada soalan, hubungi admin:\n` +
+   331→              `WhatsApp: ${COMPANY.phone}\n` +
+   332→              `Email: ${COMPANY.email}\n\n` +
+   333→              `Terima kasih! 🙏`
+   334→            )
+   335→          }
+   336→
+   337→          let thisSent = 0
+   338→          if (helper?.phone) {
+   339→            const r = await sendWhatsApp({
+   340→              to: helper.phone,
+   341→              body: buildReminder(helper.fullName, 'helper'),
+   342→            })
+   343→            if (r.success) {
+   344→              thisSent++
+   345→              stats.whatsappSent++
+   346→            }
+   347→          }
+   348→          if (employer?.phone) {
+   349→            const r = await sendWhatsApp({
+   350→              to: employer.phone,
+   351→              body: buildReminder(employer.fullName, 'employer'),
+   352→            })
+   353→            if (r.success) {
+   354→              thisSent++
+   355→              stats.whatsappSent++
+   356→            }
+   357→          }
+   358→
+   359→          // Mark reminder as sent on all 3 contracts in this booking
+   360→          for (const c of contracts) {
+   361→            await db.contract.update({
+   362→              where: { id: c.id },
+   363→              data: {
+   364→                content: `${c.content || ''}\n\n[CONTRACT_REMINDER_SENT ${new Date().toISOString()}]`,
+   365→              },
+   366→            })
+   367→          }
+   368→
+   369→          sent++
+   370→
+   371→          await this.logActivity({
+   372→            action: 'send_contract_reminder',
+   373→            status: 'success',
+   374→            input: JSON.stringify({ bookingId: first.bookingId }),
+   375→            output: JSON.stringify({ whatsappSent: thisSent }),
+   376→          })
+   377→        } catch (e: any) {
+   378→          stats.errors++
+   379→          await this.logActivity({
+   380→            action: 'send_contract_reminder',
+   381→            status: 'error',
+   382→            input: JSON.stringify({ bookingId: contracts[0]?.bookingId }),
+   383→            errorMessage: e.message || String(e),
+   384→          })
+   385→        }
+   386→      }
+   387→    } catch (e: any) {
+   388→      stats.errors++
+   389→    }
+   390→
+   391→    return sent
+   392→  }
+   393→
+   394→  /**
+   395→   * Phase 3: Mark contracts as 'expired' after 7 days if still not fully signed.
+   396→   */
+   397→  private async expireStaleContracts(stats: any): Promise<number> {
+   398→    let expired = 0
+   399→
+   400→    try {
+   401→      const now = Date.now()
+   402→      const expireThreshold = new Date(now - EXPIRE_AFTER_DAYS * DAY_MS)
+   403→
+   404→      // Find draft contracts older than 7 days, not fully signed
+   405→      const staleContracts = await db.contract.findMany({
+   406→        where: {
+   407→          status: 'draft',
+   408→          createdAt: { lte: expireThreshold },
+   409→          OR: [
+   410→            { signedHelper: false },
+   411→            { signedEmployer: false },
+   412→            { signedAdmin: false },
+   413→          ],
+   414→        },
+   415→        include: {
+   416→          helper: { select: { id: true, fullName: true, phone: true } },
+   417→          employer: { select: { id: true, fullName: true, phone: true } },
+   418→          booking: { select: { id: true } },
+   419→        },
+   420→        take: 30,
+   421→      })
+   422→
+   423→      for (const contract of staleContracts) {
+   424→        try {
+   425→          await db.contract.update({
+   426→            where: { id: contract.id },
+   427→            data: { status: 'expired' },
+   428→          })
+   429→          expired++
+   430→
+   431→          await this.logActivity({
+   432→            action: 'expire_contract',
+   433→            status: 'success',
+   434→            input: JSON.stringify({ contractId: contract.id, type: contract.contractType }),
+   435→            output: JSON.stringify({ reason: '7 hari tanpa tandatangan' }),
+   436→          })
+   437→        } catch (e: any) {
+   438→          stats.errors++
+   439→          await this.logActivity({
+   440→            action: 'expire_contract',
+   441→            status: 'error',
+   442→            input: JSON.stringify({ contractId: contract.id }),
+   443→            errorMessage: e.message || String(e),
+   444→          })
+   445→        }
+   446→      }
+   447→
+   448→      // Notify admin if any contracts expired
+   449→      if (expired > 0) {
+   450→        await this.notify({
+   451→          category: 'contract',
+   452→          severity: 'warning',
+   453→          title: `${expired} kontrak ditamatkan (7 hari tanpa tandatangan)`,
+   454→          message: `${expired} kontrak telah ditandakan sebagai 'expired' kerana tidak ditandatangani dalam tempoh 7 hari. Sila semak dan hubungi pihak berkenaan secara manual.`,
+   455→          actionUrl: '/admin/contracts',
+   456→        })
+   457→
+   458→        // Send WhatsApp to admin
+   459→        try {
+   460→          await sendWhatsApp({
+   461→            to: ADMIN_PHONE,
+   462→            body:
+   463→              `⚠️ Kontrak Tamat Tempoh\n\n` +
+   464→              `${expired} kontrak telah ditamatkan kerana tidak ditandatangani dalam 7 hari.\n` +
+   465→              `Sila semak: /admin/contracts\n\n` +
+   466→              `— MIM Portal Auto-Contract Agent`,
+   467→          })
+   468→        } catch {}
+   469→      }
+   470→    } catch (e: any) {
+   471→      stats.errors++
+   472→    }
+   473→
+   474→    return expired
+   475→  }
+   476→
+   477→  /**
+   478→   * Phase 4: Activate contracts that are fully signed by all 3 parties.
+   479→   * When a booking's all 3 contracts are active, update booking status to 'active'.
+   480→   */
+   481→  private async activateFullySignedContracts(stats: any): Promise<number> {
+   482→    let activated = 0
+   483→
+   484→    try {
+   485→      // Find draft contracts fully signed by all 3 parties
+   486→      const readyContracts = await db.contract.findMany({
+   487→        where: {
+   488→          status: 'draft',
+   489→          signedHelper: true,
+   490→          signedEmployer: true,
+   491→          signedAdmin: true,
+   492→        },
+   493→        include: {
+   494→          booking: { select: { id: true, status: true } },
+   495→          helper: { select: { id: true, fullName: true, phone: true } },
+   496→          employer: { select: { id: true, fullName: true, phone: true } },
+   497→        },
+   498→        take: 30,
+   499→      })
+   500→
+   501→      const bookingIdsToCheck = new Set<string>()
+   502→
+   503→      for (const contract of readyContracts) {
+   504→        try {
+   505→          await db.contract.update({
+   506→            where: { id: contract.id },
+   507→            data: { status: 'active' },
+   508→          })
+   509→          activated++
+   510→
+   511→          if (contract.bookingId) {
+   512→            bookingIdsToCheck.add(contract.bookingId)
+   513→          }
+   514→
+   515→          await this.logActivity({
+   516→            action: 'activate_contract',
+   517→            status: 'success',
+   518→            input: JSON.stringify({ contractId: contract.id, type: contract.contractType }),
+   519→            output: JSON.stringify({ status: 'active' }),
+   520→          })
+   521→        } catch (e: any) {
+   522→          stats.errors++
+   523→          await this.logActivity({
+   524→            action: 'activate_contract',
+   525→            status: 'error',
+   526→            input: JSON.stringify({ contractId: contract.id }),
+   527→            errorMessage: e.message || String(e),
+   528→          })
+   529→        }
+   530→      }
+   531→
+   532→      // For each affected booking, check if all 3 contracts are now active
+   533→      for (const bookingId of bookingIdsToCheck) {
+   534→        try {
+   535→          const allContracts = await db.contract.findMany({
+   536→            where: { bookingId },
+   537→            select: { id: true, status: true, contractType: true },
+   538→          })
+   539→
+   540→          const allActive =
+   541→            allContracts.length >= 3 &&
+   542→            allContracts.every((c) => c.status === 'active')
+   543→
+   544→          if (allActive) {
+   545→            // Update booking status to 'active' (work has started)
+   546→            await db.booking.update({
+   547→              where: { id: bookingId },
+   548→              data: { status: 'active' },
+   549→            })
+   550→
+   551→            await this.notify({
+   552→              category: 'contract',
+   553→              severity: 'info',
+   554→              title: 'Semua kontrak diaktifkan!',
+   555→              message: `Booking ${bookingId}: Semua 3 kontrak telah ditandatangani dan diaktifkan. Status booking dikemaskini ke 'active'.`,
+   556→              actionUrl: `/admin/contracts?booking=${bookingId}`,
+   557→            })
+   558→
+   559→            await this.logActivity({
+   560→              action: 'activate_booking',
+   561→              status: 'success',
+   562→              input: JSON.stringify({ bookingId }),
+   563→              output: JSON.stringify({ allContractsActive: true }),
+   564→            })
+   565→          }
+   566→        } catch (e: any) {
+   567→          stats.errors++
+   568→        }
+   569→      }
+   570→    } catch (e: any) {
+   571→      stats.errors++
+   572→    }
+   573→
+   574→    return activated
+   575→  }
+   576→
+   577→  /**
+   578→   * Use AI to generate personalized contract clauses based on helper/employer details.
+   579→   */
+   580→  private async generateAIPersonalization(
+   581→    helper: any,
+   582→    employer: any,
+   583→    booking: any
+   584→  ): Promise<AIPersonalization> {
+   585→    const defaultResult: AIPersonalization = {
+   586→      specialClauses: [],
+   587→      responsibilities: [],
+   588→      notes: '',
+   589→    }
+   590→
+   591→    try {
+   592→      const systemPrompt =
+   593→        'Anda adalah penjana kontrak AI untuk MIM Portal, platform pembantu rumah Malaysia. ' +
+   594→        'Berdasarkan maklumat pembantu & majikan, cadangkan klausa khas yang relevan. ' +
+   595→        'Balas dalam JSON SAHAJA: {"specialClauses": ["klausa 1", "klausa 2"], "responsibilities": ["tanggungjawab tambahan"], "notes": "nota ringkas"}. ' +
+   596→        'Semua dalam Bahasa Melayu. Maksimum 4 klausa, 4 tanggungjawab.'
+   597→
+   598→      const userPrompt = `MAKLMAT PEMBANTU:
+   599→- Nama: ${helper?.fullName || 'tidak diketahui'}
+   600→- Perkhidmatan: ${helper?.serviceType || helper?.desiredJob || 'Pembantu Rumah'}
+   601→- Kemahiran: ${[helper?.skills, helper?.otherSkills].filter(Boolean).join(', ') || 'umum'}
+   602→- Pengalaman: ${helper?.experience || 'tidak diketahui'}
+   603→- Agama: ${helper?.religion || 'tidak diketahui'}
+   604→- Lokasi: ${[helper?.city, helper?.state].filter(Boolean).join(', ') || 'Malaysia'}
+   605→
+   606→MAKLUMAT MAJIKAN:
+   607→- Nama: ${employer?.fullName || 'tidak diketahui'}
+   608→- Perkhidmatan diperlukan: ${employer?.serviceType || booking?.serviceType || 'Pembantu Rumah'}
+   609→- Bilangan anak: ${employer?.numKids || 0}${employer?.kidsAges ? ` (umur: ${employer.kidsAges})` : ''}
+   610→- Gaji ditawarkan: RM${employer?.salaryOffered || booking?.salary || 'tidak diketahui'}
+   611→- Kriteria khusus: ${employer?.criteria || 'tiada'}
+   612→- Lokasi: ${[employer?.city, employer?.state].filter(Boolean).join(', ') || 'Malaysia'}
+   613→
+   614→MAKLUMAT BOOKING:
+   615→- Mod: ${booking?.liveIn ? 'Live-in' : 'Back & Forth'}
+   616→- Tempoh: ${booking?.durationMonths || 12} bulan
+   617→- Permintaan khas: ${booking?.specialRequests || 'tiada'}
+   618→
+   619→Cadangkan klausa khas yang sesuai untuk kontrak ini (contoh: jaga bayi, masak, larangan, keperluan khusus).`
+   620→
+   621→      const messages: ChatMessage[] = [
+   622→        { role: 'system', content: systemPrompt },
+   623→        { role: 'user', content: userPrompt },
+   624→      ]
+   625→      const aiRes = await aiChat(messages, { temperature: 0.4, maxTokens: 800 })
+   626→      const parsed = parseAIJson<AIPersonalization>(aiRes.content)
+   627→      if (!parsed) return defaultResult
+   628→
+   629→      return {
+   630→        specialClauses: Array.isArray(parsed.specialClauses)
+   631→          ? parsed.specialClauses.slice(0, 4)
+   632→          : [],
+   633→        responsibilities: Array.isArray(parsed.responsibilities)
+   634→          ? parsed.responsibilities.slice(0, 4)
+   635→          : [],
+   636→        notes: typeof parsed.notes === 'string' ? parsed.notes : '',
+   637→      }
+   638→    } catch {
+   639→      return defaultResult
+   640→    }
+   641→  }
+   642→
+   643→  /**
+   644→   * Build contract content (similar style to /api/admin/contracts/generate but with
+   645→   * AI personalization appended).
+   646→   */
+   647→  private buildContractContent(
+   648→    type: ContractType,
+   649→    helper: any,
+   650→    employer: any,
+   651→    booking: any,
+   652→    personalization: AIPersonalization
+   653→  ): string {
+   654→    const today = new Date()
+   655→    const startDate = booking?.startDate || today
+   656→    const endDate = new Date(startDate)
+   657→    endDate.setMonth(endDate.getMonth() + (booking?.durationMonths || 12))
+   658→    const salary = booking?.salary || employer?.salaryOffered || 1800
+   659→
+   660→    const fmtDate = (d: Date) =>
+   661→      new Intl.DateTimeFormat('ms-MY', {
+   662→        day: '2-digit',
+   663→        month: 'long',
+   664→        year: 'numeric',
+   665→      }).format(d)
+   666→
+   667→    const fmtMYR = (amt: number) =>
+   668→      new Intl.NumberFormat('ms-MY', {
+   669→        style: 'currency',
+   670→        currency: 'MYR',
+   671→        minimumFractionDigits: 0,
+   672→        maximumFractionDigits: 0,
+   673→      }).format(amt)
+   674→
+   675→    const header = `
+   676→==============================================================
+   677→              PERJANJIAN KONTRAT PERKHIDMATAN
+   678→                    MIM PORTAL — ${COMPANY.brand}
+   679→==============================================================
+   680→
+   681→${COMPANY.name}
+   682→(No. SSM: ${COMPANY.ssm})
+   683→${COMPANY.address}
+   684→
+   685→Email: ${COMPANY.email}
+   686→Telefon: ${COMPANY.phone}
+   687→Laman Web: ${COMPANY.website}
+   688→
+   689→Tarikh Kontrak: ${fmtDate(today)}
+   690→`.trim()
+   691→
+   692→    const helperBlock = `
+   693→PIHAK KEDUA (PEMBANTU):
+   694→  Nama Penuh      : ${helper?.fullName || '[Nama Pembantu]'}
+   695→  No. IC          : ${helper?.ic || '[No. IC]'}
+   696→  No. Telefon     : ${helper?.phone || '[Telefon]'}
+   697→  Alamat          : ${[helper?.addressLine1, helper?.addressLine2, helper?.city, helper?.state, helper?.postalCode].filter(Boolean).join(', ') || '[Alamat]'}
+   698→  Jawatan         : ${helper?.serviceType || helper?.desiredJob || 'Pembantu Rumah'}
+   699→`.trim()
+   700→
+   701→    const employerBlock = `
+   702→PIHAK KETIGA (MAJIKAN):
+   703→  Nama Penuh      : ${employer?.fullName || '[Nama Majikan]'}
+   704→  No. IC          : ${employer?.ic || '[No. IC]'}
+   705→  No. Telefon     : ${employer?.phone || '[Telefon]'}
+   706→  Alamat          : ${[employer?.addressLine1, employer?.addressLine2, employer?.city, employer?.state, employer?.postalCode].filter(Boolean).join(', ') || '[Alamat]'}
+   707→  Perkhidmatan    : ${employer?.serviceType || booking?.serviceType || '[Perkhidmatan]'}
+   708→`.trim()
+   709→
+   710→    const agencyBlock = `
+   711→PIHAK PERTAMA (AGENSI):
+   712→  ${COMPANY.name}
+   713→  (No. SSM: ${COMPANY.ssm})
+   714→  ${COMPANY.address}
+   715→  Wakil: ${COMPANY.signatory} (Pengasas & Penerbit Prinsipal)
+   716→`.trim()
+   717→
+   718→    const commonTerms = `
+   719→TERMA & SYARAT UMUM:
+   720→
+   721→1. TEMPOH KONTRAK
+   722→   Kontrak ini berkuat kuasa selama ${booking?.durationMonths || 12} bulan,
+   723→   bermula dari ${fmtDate(startDate)} hingga ${fmtDate(endDate)}.
+   724→
+   725→2. GAJI & PEMBAYARAN
+   726→   Gaji sebulan: ${fmtMYR(salary)}
+   727→   Gaji dibayar oleh Majikan kepada Pembantu pada setiap hujung bulan
+   728→   melalui pemindahan bank atau tunai. Agensi akan memantau pembayaran.
+   729→
+   730→3. WAKTU KERJA
+   731→   - Live-in: 6:00 pagi - 10:00 malam (cuti Ahad & cuti umum)
+   732→   - Back & Forth: 8:00 pagi - 7:00 petang (cuti Ahad & cuti umum)
+   733→   - Cuti tahunan: 8 hari cuti berbayar setiap tahun kontrak
+   734→
+   735→4. TANGGUNGJAWAB PEMBANTU
+   736→   - Melaksanakan tugas mengikut jenis perkhidmatan yang dipersetujui
+   737→   - Menjaga kerahsiaan maklumat majikan
+   738→   - Mematuhi peraturan rumah majikan
+   739→   - Melaporkan sebarang masalah kepada Agensi
+   740→${personalization.responsibilities.map((r) => `   - ${r}`).join('\n')}
+   741→
+   742→5. TANGGUNGJAWAB MAJIKAN
+   743→   - Menyediakan tempat tinggal yang selesa (untuk Live-in)
+   744→   - Membayar gaji tepat pada masa
+   745→   - Memberikan cuti mengikut kontrak
+   746→   - Menjaga keselamatan & kebajikan pembantu
+   747→
+   748→6. TANGGUNGJAWAB AGENSI
+   749→   - Memantau perjalanan kontrak
+   750→   - Menjadi orang tengah dalam penyelesaian masalah
+   751→   - Memberi latihan & sokongan berterusan kepada pembantu
+   752→
+   753→7. PENTAMBATAN KONTRAK
+   754→   Kontrak ini boleh ditamatkan oleh mana-mana pihak dengan notis
+   755→   bertulis 30 hari terlebih dahulu. Sekiranya berlaku pelanggaran
+   756→   terma, pihak yang terkilan boleh menamatkan kontrak dengan notis
+   757→   7 hari.
+   758→
+   759→8. KESIHATAN & KESELAMATAN
+   760→   - Pembantu dikehendaki menjalani pemeriksaan kesihatan & vaksinasi
+   761→   - Majikan bertanggungjawab memastikan persekitaran kerja selamat
+   762→   - Agensi menyimpan rekod perubatan pembantu
+   763→
+   764→9. PENYELESAIAN PERKARA
+   765→   Sebarang perselisihan akan dirundingkan secara muafakat. Jika tidak
+   766→   selesai, ia akan dirujuk ke mahkamah Malaysia.
+   767→
+   768→10. UMUM
+   769→    Kontrak ini terpakai selaras dengan Akta Pekerjaan 1955 dan
+   770→    undang-undang Malaysia yang berkaitan.
+   771→${personalization.specialClauses.length > 0 ? `\n11. KLAUSA KHAS\n${personalization.specialClauses.map((c, i) => `    ${i + 1}. ${c}`).join('\n')}` : ''}
+   772→${personalization.notes ? `\nNOTA: ${personalization.notes}` : ''}
+   773→`.trim()
+   774→
+   775→    const signatureBlock = `
+   776→TANDATANGAN:
+   777→
+   778→PIHAK PERTAMA (AGENSI)
+   779→${COMPANY.name}
+   780→
+   781→_______________________________
+   782→${COMPANY.signatory}
+   783→Pengasas & Penerbit Prinsipal
+   784→Tarikh: _____________
+   785→
+   786→
+   787→PIHAK KEDUA (PEMBANTU)
+   788→
+   789→_______________________________
+   790→${helper?.fullName || '[Nama Pembantu]'}
+   791→No. IC: ${helper?.ic || '_______________'}
+   792→Tarikh: _____________
+   793→
+   794→
+   795→PIHAK KETIGA (MAJIKAN)
+   796→
+   797→_______________________________
+   798→${employer?.fullName || '[Nama Majikan]'}
+   799→No. IC: ${employer?.ic || '_______________'}
+   800→Tarikh: _____________
+   801→
+   802→==============================================================
+   803→Kontrak ini dijana oleh MIM Portal (${COMPANY.brand})
+   804→Pertanyaan: ${COMPANY.phone} | ${COMPANY.email}
+   805→==============================================================
+   806→`.trim()
+   807→
+   808→    const typeHeader: Record<ContractType, string> = {
+   809→      agency_helper: 'JENIS KONTRAK: PERJANJIAN ANTARA AGENSI DAN PEMBANTU',
+   810→      agency_employer: 'JENIS KONTRAK: PERJANJIAN ANTARA AGENSI DAN MAJIKAN',
+   811→      employer_helper: 'JENIS KONTRAK: PERJANJIAN ANTARA MAJIKAN DAN PEMBANTU',
+   812→    }
+   813→
+   814→    const intro: Record<ContractType, string> = {
+   815→      agency_helper: `Perjanjian ini dibuat antara ${COMPANY.name} ("Agensi") dan ${helper?.fullName || 'Pembantu'} ("Pembantu") untuk menyediakan perkhidmatan penempatan & sokongan pembantu rumah/pengasuh/penjaga orang tua melalui portal MIM.`,
+   816→      agency_employer: `Perjanjian ini dibuat antara ${COMPANY.name} ("Agensi") dan ${employer?.fullName || 'Majikan'} ("Majikan") untuk penyediaan perkhidmatan pembantu rumah/pengasuh/penjaga orang tua melalui portal MIM.`,
+   817→      employer_helper: `Perjanjian ini dibuat antara ${employer?.fullName || 'Majikan'} ("Majikan") dan ${helper?.fullName || 'Pembantu'} ("Pembantu") dengan pemantauan ${COMPANY.name} ("Agensi").`,
+   818→    }
+   819→
+   820→    const placementBlock =
+   821→      type === 'employer_helper'
+   822→        ? `\nBUTIRAN PENEMPATAN:\n  Jenis Perkhidmatan : ${booking?.serviceType || employer?.serviceType || '[Perkhidmatan]'}\n  Gaji Sebulan       : ${fmtMYR(salary)}\n  Tarikh Mula        : ${fmtDate(startDate)}\n  Tarikh Tamat       : ${fmtDate(endDate)}\n  Tempoh             : ${booking?.durationMonths || 12} bulan\n  Mod Kerja          : ${booking?.liveIn ? 'Live-in' : 'Back & Forth'}\n  Bilangan Anak      : ${employer?.numKids || 0}\n`
+   823→        : ''
+   824→
+   825→    const partyOrder: Record<ContractType, string> = {
+   826→      agency_helper: `${agencyBlock}\n\n${helperBlock}`,
+   827→      agency_employer: `${agencyBlock}\n\n${employerBlock}`,
+   828→      employer_helper: `${employerBlock}\n\n${helperBlock}`,
+   829→    }
+   830→
+   831→    return `
+   832→${header}
+   833→
+   834→${typeHeader[type]}
+   835→
+   836→${partyOrder[type]}
+   837→
+   838→PENGENALAN:
+   839→${intro[type]}
+   840→${placementBlock}
+   841→${commonTerms}
+   842→
+   843→${signatureBlock}
+   844→`.trim()
+   845→  }
+   846→
+   847→  /**
+   848→   * Send WhatsApp to helper, employer, and admin when contracts are created.
+   849→   */
+   850→  private async notifyContractsCreated(booking: any): Promise<number> {
+   851→    let sent = 0
+   852→    const contractLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://mim-portal.vercel.app'}/admin/contracts`
+   853→
+   854→    const buildMsg = (name: string, role: 'helper' | 'employer' | 'admin') => {
+   855→      const roleLabel =
+   856→        role === 'helper' ? 'Pembantu' : role === 'employer' ? 'Majikan' : 'Admin'
+   857→      const otherParty =
+   858→        role === 'helper'
+   859→          ? `Majikan: ${booking.employer.fullName}`
+   860→          : role === 'employer'
+   861→          ? `Pembantu: ${booking.helper.fullName}`
+   862→          : `Pembantu: ${booking.helper.fullName}, Majikan: ${booking.employer.fullName}`
+   863→      return (
+   864→        `📋 Kontrak Baru MIM Portal\n\n` +
+   865→        `Hai ${name} (${roleLabel}),\n\n` +
+   866→        `3 kontrak telah dijana untuk penempatan ini:\n` +
+   867→        `• Agensi ↔ Pembantu\n` +
+   868→        `• Agensi ↔ Majikan\n` +
+   869→        `• Majikan ↔ Pembantu\n\n` +
+   870→        `Butiran:\n` +
+   871→        `${otherParty}\n` +
+   872→        `Gaji: RM${(booking.salary || booking.employer.salaryOffered || 1800).toLocaleString('ms-MY')}/bulan\n` +
+   873→        `Mod: ${booking.liveIn ? 'Live-in' : 'Back & Forth'}\n` +
+   874→        `Tempoh: ${booking.durationMonths || 12} bulan\n\n` +
+   875→        `Sila semak & tandatangani kontrak anda:\n` +
+   876→        `🔗 ${contractLink}\n\n` +
+   877→        `Kontrak perlu ditandatangani dalam 7 hari. Jika ada soalan, hubungi ${COMPANY.phone}.`
+   878→      )
+   879→    }
+   880→
+   881→    // Helper
+   882→    if (booking.helper?.phone) {
+   883→      try {
+   884→        const r = await sendWhatsApp({
+   885→          to: booking.helper.phone,
+   886→          body: buildMsg(booking.helper.fullName, 'helper'),
+   887→        })
+   888→        if (r.success) sent++
+   889→      } catch {}
+   890→    }
+   891→
+   892→    // Employer
+   893→    if (booking.employer?.phone) {
+   894→      try {
+   895→        const r = await sendWhatsApp({
+   896→          to: booking.employer.phone,
+   897→          body: buildMsg(booking.employer.fullName, 'employer'),
+   898→        })
+   899→        if (r.success) sent++
+   900→      } catch {}
+   901→    }
+   902→
+   903→    // Admin (via company WhatsApp)
+   904→    try {
+   905→      const r = await sendWhatsApp({
+   906→        to: ADMIN_PHONE,
+   907→        body: buildMsg('Admin', 'admin'),
+   908→      })
+   909→      if (r.success) sent++
+   910→    } catch {}
+   911→
+   912→    return sent
+   913→  }
+   914→}
+   915→
+   916→// Register singleton
+   917→agentRegistry.register(new ContractAgent())
+   918→
+   919→export { ContractAgent }
+   920→

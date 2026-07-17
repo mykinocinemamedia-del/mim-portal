@@ -30,6 +30,11 @@ import { ScheduleAgent } from './agents/schedule-agent'
 import { SupportAgent } from './agents/support-agent'
 import { QualityMonitorAgent } from './agents/quality-monitor'
 
+// Automation Phase 4-10
+import { AutoScreenerAgent } from './agents/auto-screener'
+import { SmartReplacementAgent } from './agents/smart-replacement'
+import { PredictiveAnalyticsAgent } from './agents/predictive-analytics'
+
 // Orchestrator
 import { ChiefOfStaffAgent } from './agents/chief-of-staff'
 
@@ -47,6 +52,9 @@ agentRegistry.register(new PaymentAgent())
 agentRegistry.register(new ScheduleAgent())
 agentRegistry.register(new SupportAgent())
 agentRegistry.register(new QualityMonitorAgent())
+agentRegistry.register(new AutoScreenerAgent())
+agentRegistry.register(new SmartReplacementAgent())
+agentRegistry.register(new PredictiveAnalyticsAgent())
 agentRegistry.register(new ChiefOfStaffAgent())
 
 export { agentRegistry }
