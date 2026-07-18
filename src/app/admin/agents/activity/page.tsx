@@ -45,24 +45,35 @@ export default async function ActivityPage({
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
 
-  const [
-    activities, agents, todayCount, todaySuccess, todayError, totalSuccess, totalError,
-  ] = await Promise.all([
+  // Single raw SQL for all activity counts
+  const statsResult = await db.$queryRaw`
+    SELECT
+      (SELECT COUNT(*) FROM mim_agent_activities WHERE created_at >= ${startOfToday}) as today_count,
+      (SELECT COUNT(*) FROM mim_agent_activities WHERE created_at >= ${startOfToday} AND status = 'success') as today_success,
+      (SELECT COUNT(*) FROM mim_agent_activities WHERE created_at >= ${startOfToday} AND status = 'error') as today_error,
+      (SELECT COUNT(*) FROM mim_agent_activities WHERE status = 'success') as total_success,
+      (SELECT COUNT(*) FROM mim_agent_activities WHERE status = 'error') as total_error
+  `.catch(() => null)
+
+  const s = statsResult?.[0] as any
+  const todayCount = s ? Number(s.today_count) : 0
+  const todaySuccess = s ? Number(s.today_success) : 0
+  const todayError = s ? Number(s.today_error) : 0
+  const totalSuccess = s ? Number(s.total_success) : 0
+  const totalError = s ? Number(s.total_error) : 0
+
+  // Only 2 queries: activities + agents list
+  const [activities, agents] = await Promise.all([
     db.agentActivity.findMany({
       where,
       include: { agent: { select: { displayName: true, name: true } } },
       orderBy: { createdAt: 'desc' },
-      take: 100,
-    }),
+      take: 50,
+    }).catch(() => []),
     db.agent.findMany({
       select: { id: true, displayName: true, name: true },
       orderBy: { displayName: 'asc' },
-    }),
-    db.agentActivity.count({ where: { createdAt: { gte: startOfToday } } }),
-    db.agentActivity.count({ where: { createdAt: { gte: startOfToday }, status: 'success' } }),
-    db.agentActivity.count({ where: { createdAt: { gte: startOfToday }, status: 'error' } }),
-    db.agentActivity.count({ where: { status: 'success' } }),
-    db.agentActivity.count({ where: { status: 'error' } }),
+    }).catch(() => []),
   ])
 
   const todaySuccessRate = todayCount > 0 ? Math.round((todaySuccess / todayCount) * 100) : 0

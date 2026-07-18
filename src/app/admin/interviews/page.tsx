@@ -29,17 +29,23 @@ export default async function AdminInterviewsPage() {
 
   const [interviews, helpers, employers] = await Promise.all([
     db.interview.findMany({
-      include: { helper: true, employer: true },
+      include: { 
+        helper: { select: { id: true, fullName: true, phone: true, serviceType: true } },
+        employer: { select: { id: true, fullName: true, phone: true } },
+      },
       orderBy: { scheduledAt: 'desc' },
-    }),
+      take: 50,
+    }).catch(() => []),
     db.helper.findMany({
       select: { id: true, fullName: true },
       orderBy: { fullName: 'asc' },
-    }),
+      take: 100,
+    }).catch(() => []),
     db.employer.findMany({
       select: { id: true, fullName: true },
       orderBy: { fullName: 'asc' },
-    }),
+      take: 100,
+    }).catch(() => []),
   ])
 
   const helpersData = helpers.map((h) => ({ id: h.id, fullName: h.fullName }))

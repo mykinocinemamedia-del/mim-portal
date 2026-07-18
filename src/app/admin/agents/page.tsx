@@ -63,21 +63,37 @@ export default async function AdminAgentsPage() {
   let notifications: any[] = []
 
   try {
-    // OPTIMIZED: All queries in parallel - graceful fallback on any error
-    const [
-      dbAgents,
-      leadCount,
-      newLeadsCount,
-      convertedLeadsCount,
-      unreadNotifCount,
-      totalMatchCount,
-      highScoreMatchCount,
-      activeConvCount,
-      contentDraftCount,
-      pendingContractCount,
-      overduePaymentCount,
-      notifs,
-    ] = await Promise.all([
+    // SINGLE raw SQL for ALL counts (1 query instead of 11)
+    const statsResult = await db.$queryRaw`
+      SELECT
+        (SELECT COUNT(*) FROM mim_leads) as total_leads,
+        (SELECT COUNT(*) FROM mim_leads WHERE status = 'new') as new_leads,
+        (SELECT COUNT(*) FROM mim_leads WHERE status = 'converted') as converted_leads,
+        (SELECT COUNT(*) FROM mim_agent_notifications WHERE is_read = false) as unread_notifs,
+        (SELECT COUNT(*) FROM mim_match_scores) as total_matches,
+        (SELECT COUNT(*) FROM mim_match_scores WHERE score >= 85) as high_score_matches,
+        (SELECT COUNT(*) FROM mim_conversations WHERE status = 'active') as active_convs,
+        (SELECT COUNT(*) FROM mim_content_queue WHERE status = 'draft') as content_drafts,
+        (SELECT COUNT(*) FROM mim_contracts WHERE status IN ('draft', 'pending')) as pending_contracts,
+        (SELECT COUNT(*) FROM mim_payments WHERE status = 'overdue') as overdue_payments
+    `.catch(() => null)
+
+    if (statsResult && statsResult[0]) {
+      const s = statsResult[0] as any
+      totalLeads = Number(s.total_leads) || 0
+      newLeads = Number(s.new_leads) || 0
+      convertedLeads = Number(s.converted_leads) || 0
+      unreadNotifications = Number(s.unread_notifs) || 0
+      totalMatches = Number(s.total_matches) || 0
+      highScoreMatches = Number(s.high_score_matches) || 0
+      activeConversations = Number(s.active_convs) || 0
+      contentDrafts = Number(s.content_drafts) || 0
+      pendingContracts = Number(s.pending_contracts) || 0
+      overduePayments = Number(s.overdue_payments) || 0
+    }
+
+    // Only 2 more queries: agents + notifications
+    const [dbAgents, notifs] = await Promise.all([
       db.agent.findMany({
         select: { 
           id: true, name: true, displayName: true, description: true, category: true,
@@ -86,16 +102,6 @@ export default async function AdminAgentsPage() {
         },
         orderBy: { category: 'asc' },
       }).catch(() => []),
-      db.lead.count().catch(() => 0),
-      db.lead.count({ where: { status: 'new' } }).catch(() => 0),
-      db.lead.count({ where: { status: 'converted' } }).catch(() => 0),
-      db.agentNotification.count({ where: { isRead: false } }).catch(() => 0),
-      db.matchScore.count().catch(() => 0),
-      db.matchScore.count({ where: { score: { gte: 85 } } }).catch(() => 0),
-      db.conversation.count({ where: { status: 'active' } }).catch(() => 0),
-      db.contentQueue.count({ where: { status: 'draft' } }).catch(() => 0),
-      db.contract.count({ where: { status: { in: ['draft', 'pending'] } } }).catch(() => 0),
-      db.payment.count({ where: { status: 'overdue' } }).catch(() => 0),
       db.agentNotification.findMany({
         where: { isRead: false },
         orderBy: { createdAt: 'desc' },

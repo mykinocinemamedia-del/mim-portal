@@ -70,19 +70,29 @@ export default async function LeadsPage({
   if (status) where.status = status
   if (type) where.leadType = type
 
-  const [leads, totalLeads, newLeads, contactedLeads, qualifiedLeads, convertedLeads] =
-    await Promise.all([
-      db.lead.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: 100,
-      }),
-      db.lead.count(),
-      db.lead.count({ where: { status: 'new' } }),
-      db.lead.count({ where: { status: 'contacted' } }),
-      db.lead.count({ where: { status: 'qualified' } }),
-      db.lead.count({ where: { status: 'converted' } }),
-    ])
+  // Single raw SQL for all lead counts + paginated leads
+  const leads = await db.lead.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: { id: true, leadType: true, source: true, contactName: true, contactPhone: true, status: true, score: true, createdAt: true, notes: true },
+  }).catch(() => [])
+
+  const statsResult = await db.$queryRaw`
+    SELECT
+      (SELECT COUNT(*) FROM mim_leads) as total,
+      (SELECT COUNT(*) FROM mim_leads WHERE status = 'new') as new_count,
+      (SELECT COUNT(*) FROM mim_leads WHERE status = 'contacted') as contacted,
+      (SELECT COUNT(*) FROM mim_leads WHERE status = 'qualified') as qualified,
+      (SELECT COUNT(*) FROM mim_leads WHERE status = 'converted') as converted
+  `.catch(() => null)
+
+  const s = statsResult?.[0] as any
+  const totalLeads = s ? Number(s.total) : 0
+  const newLeads = s ? Number(s.new_count) : 0
+  const contactedLeads = s ? Number(s.contacted) : 0
+  const qualifiedLeads = s ? Number(s.qualified) : 0
+  const convertedLeads = s ? Number(s.converted) : 0
 
   return (
     <DashboardShell role="admin" user={{ name: session.name, email: session.email }}>

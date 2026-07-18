@@ -49,34 +49,32 @@ export default async function MatchesPage({
   if (status) where.status = status
   if (minScore) where.score = { gte: parseFloat(minScore) }
 
-  const [matches, totalMatches, highScoreMatches, suggestedMatches, acceptedMatches, matchedMatches] =
-    await Promise.all([
-      db.matchScore.findMany({
-        where,
-        include: {
-          helper: {
-            select: {
-              id: true, fullName: true, phone: true, serviceType: true,
-              rating: true, city: true, state: true, profilePhoto: true,
-            },
-          },
-          employer: {
-            select: {
-              id: true, fullName: true, phone: true, serviceType: true,
-              city: true, state: true, salaryOffered: true,
-            },
-          },
-          agent: { select: { displayName: true } },
-        },
-        orderBy: { score: 'desc' },
-        take: 100,
-      }),
-      db.matchScore.count(),
-      db.matchScore.count({ where: { score: { gte: 85 } } }),
-      db.matchScore.count({ where: { status: 'suggested' } }),
-      db.matchScore.count({ where: { status: 'accepted' } }),
-      db.matchScore.count({ where: { status: 'matched' } }),
-    ])
+  // Single raw SQL for all match counts
+  const statsResult = await db.$queryRaw`
+    SELECT
+      (SELECT COUNT(*) FROM mim_match_scores) as total,
+      (SELECT COUNT(*) FROM mim_match_scores WHERE score >= 85) as high_score,
+      (SELECT COUNT(*) FROM mim_match_scores WHERE status = 'suggested') as suggested,
+      (SELECT COUNT(*) FROM mim_match_scores WHERE status = 'accepted') as accepted,
+      (SELECT COUNT(*) FROM mim_match_scores WHERE status = 'matched') as matched
+  `.catch(() => null)
+
+  const ms = statsResult?.[0] as any
+  const totalMatches = ms ? Number(ms.total) : 0
+  const highScoreMatches = ms ? Number(ms.high_score) : 0
+  const suggestedMatches = ms ? Number(ms.suggested) : 0
+  const acceptedMatches = ms ? Number(ms.accepted) : 0
+  const matchedMatches = ms ? Number(ms.matched) : 0
+
+  const matches = await db.matchScore.findMany({
+    where,
+    include: {
+      helper: { select: { id: true, fullName: true, phone: true, serviceType: true, rating: true, city: true, state: true } },
+      employer: { select: { id: true, fullName: true, phone: true, serviceType: true, city: true, state: true, salaryOffered: true } },
+    },
+    orderBy: { score: 'desc' },
+    take: 50,
+  }).catch(() => [])
 
   return (
     <DashboardShell role="admin" user={{ name: session.name, email: session.email }}>

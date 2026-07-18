@@ -40,42 +40,37 @@ export default async function AdminMatchPage() {
     redirect('/admin/login')
   }
 
-  // Fetch pending bookings with employer & helper
+  // Fetch pending bookings with employer & helper (LIMIT to 10 for performance)
   const pendingBookings = await db.booking.findMany({
     where: { status: 'pending' },
-    include: { employer: true, helper: true },
+    include: { 
+      employer: { select: { id: true, fullName: true, phone: true, state: true, serviceType: true, salaryOffered: true, city: true, numKids: true, kidsAges: true, criteria: true } },
+      helper: { select: { id: true, fullName: true, serviceType: true, rating: true, city: true, state: true, phone: true } },
+    },
     orderBy: { createdAt: 'desc' },
+    take: 10,
+  }).catch(() => [])
+
+  // Fetch ALL active helpers ONCE (instead of per-booking N+1 queries)
+  const allActiveHelpers = await db.helper.findMany({
+    where: { status: 'active' },
+    select: { id: true, fullName: true, nickname: true, serviceType: true, desiredJob: true, rating: true, city: true, state: true, phone: true, liveIn: true, backAndForth: true, canBoth: true, age: true, religion: true, skills: true },
+    orderBy: { rating: 'desc' },
+    take: 50,
+  }).catch(() => [])
+
+  // Match helpers to bookings in memory (no DB queries)
+  const bookingsWithMatches = pendingBookings.map((b) => {
+    const serviceType = b.serviceType || b.employer?.serviceType
+    const candidates = allActiveHelpers
+      .filter(h => !serviceType || h.serviceType === serviceType || h.desiredJob === serviceType)
+      .slice(0, 8)
+
+    return {
+      booking: b,
+      matches: candidates,
+    }
   })
-
-  // For each booking, find matching helpers based on serviceType + area
-  const bookingsWithMatches = await Promise.all(
-    pendingBookings.map(async (b) => {
-      const serviceType = b.serviceType || b.employer.serviceType
-      const employerState = b.employer.state
-
-      // Find helpers matching service type and active, excluding the already-booked helper if any
-      const candidates = await db.helper.findMany({
-        where: {
-          status: 'active',
-          ...(serviceType
-            ? {
-                OR: [
-                  { serviceType },
-                  { desiredJob: serviceType },
-                ],
-              }
-            : {}),
-        },
-        take: 8,
-        orderBy: { rating: 'desc' },
-      })
-
-      return {
-        booking: b,
-        matches: candidates,
-      }
-    })
-  )
 
   return (
     <DashboardShell
